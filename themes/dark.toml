@@ -1,0 +1,47 @@
+[meta]
+name = "Dark"
+author = "harboring"
+
+[palette]
+bg = "#1e1e2e"
+fg = "#cdd6f4"
+green = "#a6e3a1"
+red = "#f38ba8"
+yellow = "#f9e2af"
+cyan = "#94e2d5"
+magenta = "#cba6f7"
+blue = "#89b4fa"
+orange = "#fab387"
+gray = "#6c7086"
+unknown = "#f5c2e7"
+warn = "#fab387"
+
+[styles]
+method_get      = { fg = "green" }
+method_post     = { fg = "yellow" }
+method_put      = { fg = "orange" }
+method_delete   = { fg = "red" }
+method_patch    = { fg = "magenta" }
+method_options  = { fg = "gray" }
+method_head     = { fg = "gray" }
+status_2xx      = { fg = "green" }
+status_3xx      = { fg = "cyan" }
+status_4xx      = { fg = "yellow" }
+status_5xx      = { fg = "red" }
+json_key        = { fg = "blue" }
+json_string     = { fg = "green" }
+json_number     = { fg = "magenta" }
+json_bool       = { fg = "yellow" }
+json_null       = { fg = "gray" }
+json_bracket    = { fg = "fg" }
+json_unknown    = { fg = "unknown", italic = true }
+waterfall_dns     = { fg = "green" }
+waterfall_connect = { fg = "cyan" }
+waterfall_ssl     = { fg = "blue" }
+waterfall_send    = { fg = "yellow" }
+waterfall_wait    = { fg = "orange" }
+waterfall_receive = { fg = "magenta" }
+title           = { fg = "fg", bold = true }
+status_line     = { fg = "gray" }
+border          = { fg = "gray" }
+search_match    = { fg = "bg", bg = "yellow" }
