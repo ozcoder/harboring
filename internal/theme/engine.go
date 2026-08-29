@@ -5,27 +5,47 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/BurntSushi/toml"
 	"charm.land/lipgloss/v2"
+	"github.com/BurntSushi/toml"
 )
 
 type Engine struct {
 	current   *ThemeConfig
 	dark      *ThemeConfig
 	light     *ThemeConfig
-	isDark     bool
-	truecolor  bool
+	spectrum  *ThemeConfig
+	turbo     *ThemeConfig
+	isDark    bool
+	truecolor bool
+	order     []string
+	byName    map[string]*ThemeConfig
+	curName   string
+	cliTheme  string
 }
 
 func New() *Engine {
 	dark := DefaultDark()
-	return &Engine{
-		current:   dark,
+	light := DefaultLight()
+	spectrum := DefaultSpectrum()
+	turbo := DefaultTurbo()
+	e := &Engine{
 		dark:      dark,
-		light:     DefaultLight(),
+		light:     light,
+		spectrum:  spectrum,
+		turbo:     turbo,
 		isDark:    true,
 		truecolor: true,
+		order:     []string{"dark", "light", "spectrum", "turbo"},
 	}
+	e.byName = map[string]*ThemeConfig{
+		"dark":     dark,
+		"light":    light,
+		"spectrum": spectrum,
+		"turbo":    turbo,
+	}
+	e.current = dark
+	e.curName = "dark"
+	return e
 }
 
 func LoadFromFile(path string) (*ThemeConfig, error) {
@@ -40,23 +60,68 @@ func (e *Engine) Current() *ThemeConfig {
 	return e.current
 }
 
-func (e *Engine) Toggle() *ThemeConfig {
-	if e.isDark {
-		e.SetLight()
-	} else {
-		e.SetDark()
+// Name returns the name of the currently selected built-in theme.
+func (e *Engine) Name() string {
+	return e.curName
+}
+
+// Names returns the names of the built-in themes in toggle (cycle) order.
+func (e *Engine) Names() []string {
+	return append([]string(nil), e.order...)
+}
+
+// CLITheme returns the theme explicitly requested via the --theme flag at
+// startup, or "" if none was given (or the given flag did not resolve).
+func (e *Engine) CLITheme() string {
+	return e.cliTheme
+}
+
+// Set selects a built-in theme by name (e.g. "dark", "light", "spectrum").
+// It returns false if the name is not a known built-in theme.
+func (e *Engine) Set(name string) bool {
+	cfg, ok := e.byName[name]
+	if !ok {
+		return false
 	}
+	e.current = cfg
+	e.curName = name
+	e.isDark = name != "light"
+	return true
+}
+
+// SetConfig installs an arbitrary (e.g. file-loaded) theme configuration.
+func (e *Engine) SetConfig(tc *ThemeConfig) {
+	e.current = tc
+	e.curName = ""
+	e.isDark = true
+}
+
+func (e *Engine) Toggle() *ThemeConfig {
+	idx := 0
+	for i, n := range e.order {
+		if n == e.curName {
+			idx = i
+			break
+		}
+	}
+	e.Set(e.order[(idx+1)%len(e.order)])
 	return e.current
 }
 
 func (e *Engine) SetDark() {
-	e.current = e.dark
-	e.isDark = true
+	e.Set("dark")
 }
 
 func (e *Engine) SetLight() {
-	e.current = e.light
-	e.isDark = false
+	e.Set("light")
+}
+
+func (e *Engine) SetSpectrum() {
+	e.Set("spectrum")
+}
+
+func (e *Engine) SetTurbo() {
+	e.Set("turbo")
 }
 
 func (e *Engine) IsDark() bool {
@@ -71,28 +136,48 @@ func (e *Engine) IsTruecolor() bool {
 	return e.truecolor
 }
 
+// LoadStartup selects the startup theme. An explicit CLI flag wins over the
+// user config file; an empty flag falls back to the config file theme, then
+// the built-in dark default.
 func (e *Engine) LoadStartup(themeFlag string) {
-	configDir, err := os.UserConfigDir()
-	if err == nil {
-		themePath := filepath.Join(configDir, "harboring", "theme.toml")
-		if _, statErr := os.Stat(themePath); statErr == nil {
-			if tc, loadErr := LoadFromFile(themePath); loadErr == nil {
-				e.current = tc
-				return
-			}
-		}
-	}
-
+	e.cliTheme = ""
 	switch themeFlag {
 	case "dark":
 		e.SetDark()
+		e.cliTheme = "dark"
+		return
 	case "light":
 		e.SetLight()
+		e.cliTheme = "light"
+		return
+	case "spectrum":
+		e.SetSpectrum()
+		e.cliTheme = "spectrum"
+		return
+	case "turbo":
+		e.SetTurbo()
+		e.cliTheme = "turbo"
+		return
 	case "":
+		// fall through to the config file theme below
 	default:
 		if tc, err := LoadFromFile(themeFlag); err == nil {
-			e.current = tc
+			e.SetConfig(tc)
+			e.cliTheme = themeFlag
+			return
 		}
+	}
+
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return
+	}
+	themePath := filepath.Join(configDir, "harboring", "theme.toml")
+	if _, statErr := os.Stat(themePath); statErr != nil {
+		return
+	}
+	if tc, loadErr := LoadFromFile(themePath); loadErr == nil {
+		e.SetConfig(tc)
 	}
 }
 
@@ -132,6 +217,9 @@ func (e *Engine) GetStyle(name string) lipgloss.Style {
 	if def.Italic {
 		s = s.Italic(true)
 	}
+	if def.Underline {
+		s = s.Underline(true)
+	}
 
 	return s
 }
@@ -150,6 +238,16 @@ func (e *Engine) GetWarn() string {
 
 func (e *Engine) GetGray() string {
 	return e.resolveColor(e.current.Palette["gray"])
+}
+
+// GetSelectionBg returns the resolved background colour used to highlight the
+// currently selected row. If the theme does not define a selection style it
+// falls back to the theme background.
+func (e *Engine) GetSelectionBg() string {
+	if def, ok := e.current.Styles["selection"]; ok && def.Bg != "" {
+		return e.resolveColor(def.Bg)
+	}
+	return e.GetBg()
 }
 
 func hexTo256(hex string) string {

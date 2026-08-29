@@ -34,7 +34,7 @@ func renderNodeLine(n *har.Node, th *theme.Engine, isSelected bool, width int, d
 		return buildLeafLine(indent, nodeKey, val, stringStyle, keyStyle, unknownStyle, n.IsKnown, th, isSelected, width)
 
 	case har.Number:
-		val := fmt.Sprintf("%v", n.Value)
+		val := n.NumberText()
 		return buildLeafLine(indent, nodeKey, val, numberStyle, keyStyle, unknownStyle, n.IsKnown, th, isSelected, width)
 
 	case har.Bool:
@@ -51,7 +51,44 @@ func renderNodeLine(n *har.Node, th *theme.Engine, isSelected bool, width int, d
 	return ""
 }
 
+// truncateWidth shortens s to at most max display columns, appending "...".
+// It operates on rune boundaries so multi-byte characters are never split.
+func truncateWidth(s string, max int) string {
+	if max <= 0 {
+		return ""
+	}
+	if lipgloss.Width(s) <= max {
+		return s
+	}
+	if max <= 3 {
+		return strings.Repeat(".", max)
+	}
+	var b strings.Builder
+	w := 0
+	for _, r := range s {
+		rw := lipgloss.Width(string(r))
+		if w+rw > max-3 {
+			break
+		}
+		b.WriteRune(r)
+		w += rw
+	}
+	return b.String() + "..."
+}
+
 func buildLeafLine(indent, key, val string, valStyle, keyStyle, unknownStyle lipgloss.Style, isKnown bool, th *theme.Engine, isSelected bool, width int) string {
+	prefix := ""
+	if key != "" {
+		prefix = key + ": "
+	}
+	avail := width - lipgloss.Width(indent) - lipgloss.Width(prefix)
+	if avail < 1 {
+		avail = 1
+	}
+	if lipgloss.Width(val) > avail {
+		val = truncateWidth(val, avail)
+	}
+
 	var sb strings.Builder
 	sb.WriteString(indent)
 
@@ -67,16 +104,9 @@ func buildLeafLine(indent, key, val string, valStyle, keyStyle, unknownStyle lip
 	sb.WriteString(valStr)
 
 	line := sb.String()
-	if lipgloss.Width(line) > width {
-		line = line[:width]
-	}
 
 	if isSelected {
-		selectedStyle := lipgloss.NewStyle().
-			Background(lipgloss.Color(th.GetBg())).
-			Foreground(lipgloss.Color(th.GetFg())).
-			Bold(true)
-		return selectedStyle.Render(line)
+		return th.GetStyle("selection").Render(line)
 	}
 	return line
 }
@@ -90,37 +120,47 @@ func buildContainerLine(n *har.Node, indent, key string, depth int, bracketStyle
 		closeBracket = "]"
 	}
 
+	budget := width - lipgloss.Width(indent)
 	var sb strings.Builder
+	write := func(s string) bool {
+		w := lipgloss.Width(s)
+		if w > budget {
+			return false
+		}
+		sb.WriteString(s)
+		budget -= w
+		return true
+	}
+
 	sb.WriteString(indent)
 
-	if n.Collapsed {
-		sb.WriteString("▸ ")
-	} else {
-		sb.WriteString("▾ ")
+	arrow := "▸ "
+	if !n.Collapsed {
+		arrow = "▾ "
+	}
+	if !write(bracketStyle.Render(arrow)) {
+		return sb.String()
 	}
 
 	if key != "" {
-		sb.WriteString(keyStyle.Render(key))
-		sb.WriteString(bracketStyle.Render(": "))
+		if !write(keyStyle.Render(key)) {
+			return sb.String()
+		}
+		if !write(bracketStyle.Render(": ")) {
+			return sb.String()
+		}
 	}
 
 	if n.Collapsed {
-		sb.WriteString(bracketStyle.Render(fmt.Sprintf("%s %d items %s", openBracket, count, closeBracket)))
+		write(bracketStyle.Render(fmt.Sprintf("%s %d items %s", openBracket, count, closeBracket)))
 	} else {
-		sb.WriteString(bracketStyle.Render(openBracket))
+		write(bracketStyle.Render(openBracket))
 	}
 
 	line := sb.String()
-	if lipgloss.Width(line) > width {
-		line = line[:width]
-	}
 
 	if isSelected {
-		selectedStyle := lipgloss.NewStyle().
-			Background(lipgloss.Color(th.GetBg())).
-			Foreground(lipgloss.Color(th.GetFg())).
-			Bold(true)
-		return selectedStyle.Render(line)
+		return th.GetStyle("selection").Render(line)
 	}
 	return line
 }

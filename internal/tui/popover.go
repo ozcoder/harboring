@@ -79,22 +79,36 @@ func (p *Popover) Render(baseView string) string {
 	baseLines := strings.Split(baseView, "\n")
 	totalLines := len(baseLines)
 
-	boxStartY := (totalLines - len(boxLines)) / 2
-	if boxStartY < 0 {
-		boxStartY = 0
+	boxW := p.width
+	if len(boxLines) > 0 {
+		boxW = lipgloss.Width(boxLines[0])
 	}
-	boxEndY := boxStartY + len(boxLines)
+	boxH := len(boxLines)
 
-	result := make([]string, totalLines)
+	// The popover is composed as a true stack of layers using lipgloss's
+	// Layer/Compositor pipeline: a full-screen base layer (the underlying view,
+	// dimmed) with the modal box drawn on top at its position. This way the
+	// base content that falls outside the box footprint — to the right, above
+	// and below it — stays visible instead of being blanked out.
+	dimmed := make([]string, totalLines)
 	for i := 0; i < totalLines; i++ {
-		if i >= boxStartY && i < boxEndY {
-			result[i] = boxLines[i-boxStartY]
-		} else {
-			result[i] = dimStyle.Render(padLine(baseLines[i], p.width))
-		}
+		dimmed[i] = dimStyle.Render(padLine(baseLines[i], p.width))
 	}
 
-	return strings.Join(result, "\n")
+	boxX := (p.width - boxW) / 2
+	if boxX < 0 {
+		boxX = 0
+	}
+	boxY := (totalLines - boxH) / 2
+	if boxY < 0 {
+		boxY = 0
+	}
+
+	compositor := lipgloss.NewCompositor(
+		lipgloss.NewLayer(strings.Join(dimmed, "\n")).Z(0),
+		lipgloss.NewLayer(box).X(boxX).Y(boxY).Z(1),
+	)
+	return compositor.Render()
 }
 
 func padLine(line string, width int) string {

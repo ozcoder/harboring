@@ -2,7 +2,6 @@ package har
 
 import (
 	"fmt"
-	"os"
 )
 
 func ScrubContent(root *Node) {
@@ -16,18 +15,27 @@ func scrubWalk(n *Node) {
 			return
 		}
 	}
+	// Empty out cookies arrays (in request/response) while keeping the array node
+	if n.Key == "cookies" && n.Kind == Array {
+		n.Children = nil
+	}
 	for _, child := range n.Children {
 		scrubWalk(child)
 	}
 }
 
 func ScrubFile(inputPath, outputPath string) error {
-	data, err := os.ReadFile(inputPath)
+	data, err := ReadFileLimited(inputPath)
 	if err != nil {
 		return fmt.Errorf("read input: %w", err)
 	}
 
-	root, err := ParseBytes(data)
+	dec, err := Decompress(data)
+	if err != nil {
+		return err
+	}
+
+	root, err := ParseBytes(dec)
 	if err != nil {
 		return fmt.Errorf("parse: %w", err)
 	}
@@ -39,8 +47,8 @@ func ScrubFile(inputPath, outputPath string) error {
 		return fmt.Errorf("export: %w", err)
 	}
 
-	if err := os.WriteFile(outputPath, output, 0644); err != nil {
-		return fmt.Errorf("write output: %w", err)
+	if err := WriteFileAuto(outputPath, output); err != nil {
+		return err
 	}
 
 	return nil

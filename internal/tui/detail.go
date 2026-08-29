@@ -26,12 +26,12 @@ type DetailModel struct {
 
 func NewDetailModel(entry *har.EntryDetails, rawNode *har.Node, th *theme.Engine) DetailModel {
 	m := DetailModel{
-		entry:    entry,
-		rawNode:  rawNode,
-		viewport: viewport.New(viewport.WithWidth(80), viewport.WithHeight(20)),
-		theme:    th,
-		width:    80,
-		height:   20,
+		entry:       entry,
+		rawNode:     rawNode,
+		viewport:    viewport.New(viewport.WithWidth(80), viewport.WithHeight(20)),
+		theme:       th,
+		width:       80,
+		height:      20,
 		graphSymbol: "\u2588",
 	}
 	m.refreshContent()
@@ -126,12 +126,12 @@ func (m DetailModel) buildContent() string {
 	sb.WriteString("\n\n")
 
 	timingBarWidth := 30
-	sb.WriteString(m.renderTimingBar("DNS", m.entry.DNS, m.entry.Time, timingBarWidth, m.theme.GetStyle("waterfall_dns")))
-	sb.WriteString(m.renderTimingBar("Connect", m.entry.Connect, m.entry.Time, timingBarWidth, m.theme.GetStyle("waterfall_connect")))
-	sb.WriteString(m.renderTimingBar("SSL", m.entry.SSL, m.entry.Time, timingBarWidth, m.theme.GetStyle("waterfall_ssl")))
-	sb.WriteString(m.renderTimingBar("Send", m.entry.Send, m.entry.Time, timingBarWidth, m.theme.GetStyle("waterfall_send")))
-	sb.WriteString(m.renderTimingBar("Wait", m.entry.Wait, m.entry.Time, timingBarWidth, m.theme.GetStyle("waterfall_wait")))
-	sb.WriteString(m.renderTimingBar("Receive", m.entry.Receive, m.entry.Time, timingBarWidth, m.theme.GetStyle("waterfall_receive")))
+	sb.WriteString(m.renderTimingBar("DNS", m.entry.DNS, m.entry.Time, timingBarWidth, m.theme.GetStyle("timing_dns")))
+	sb.WriteString(m.renderTimingBar("Connect", m.entry.Connect, m.entry.Time, timingBarWidth, m.theme.GetStyle("timing_connect")))
+	sb.WriteString(m.renderTimingBar("SSL", m.entry.SSL, m.entry.Time, timingBarWidth, m.theme.GetStyle("timing_ssl")))
+	sb.WriteString(m.renderTimingBar("Send", m.entry.Send, m.entry.Time, timingBarWidth, m.theme.GetStyle("timing_send")))
+	sb.WriteString(m.renderTimingBar("Wait", m.entry.Wait, m.entry.Time, timingBarWidth, m.theme.GetStyle("timing_wait")))
+	sb.WriteString(m.renderTimingBar("Receive", m.entry.Receive, m.entry.Time, timingBarWidth, m.theme.GetStyle("timing_receive")))
 
 	sb.WriteString("\n")
 	sb.WriteString(fmt.Sprintf("  Total:   %.1fms\n", m.entry.Time))
@@ -316,7 +316,7 @@ func (m DetailModel) buildDetailScrollbar(total, visible, offset int) []string {
 	maxScroll := total - visible
 	barPos := 1
 	if maxScroll > 0 {
-		barPos = 1 + (offset * (scrollbarHeight - 2)) / maxScroll
+		barPos = 1 + (offset*(scrollbarHeight-2))/maxScroll
 	}
 	if barPos > scrollbarHeight-2 {
 		barPos = scrollbarHeight - 2
@@ -367,12 +367,14 @@ func getStatusStyle(th *theme.Engine, status int) lipgloss.Style {
 }
 
 func formatDetailSize(b int64) string {
+	var human string
 	switch {
 	case b >= 1024*1024:
-		return fmt.Sprintf("%.1f MB", float64(b)/(1024*1024))
+		human = fmt.Sprintf("%.1f MB", float64(b)/(1024*1024))
 	case b >= 1024:
-		return fmt.Sprintf("%.1f KB", float64(b)/1024)
+		human = fmt.Sprintf("%.1f KB", float64(b)/1024)
 	default:
-		return fmt.Sprintf("%d B", b)
+		human = fmt.Sprintf("%d B", b)
 	}
+	return fmt.Sprintf("%s (%d bytes)", human, b)
 }

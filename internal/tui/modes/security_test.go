@@ -18,28 +18,16 @@ func makeSecurityEntry(url string, status int, domain string) *har.EntryDetails 
 	}
 }
 
-func makeRawEntry(url string, headers []string) *har.Node {
-	entry := &har.Node{Kind: har.Object}
-	request := &har.Node{Kind: har.Object, Key: "request"}
-	urlNode := &har.Node{Kind: har.String, Key: "url", Value: url}
-	request.Children = []*har.Node{urlNode}
-
-	response := &har.Node{Kind: har.Object, Key: "response"}
-	headersNode := &har.Node{Kind: har.Array, Key: "headers"}
+func makeSecurityEntryWithHeaders(url string, status int, domain string, headers []string) *har.EntryDetails {
+	e := makeSecurityEntry(url, status, domain)
 	for _, h := range headers {
 		parts := strings.SplitN(h, ":", 2)
 		if len(parts) != 2 {
 			continue
 		}
-		headerObj := &har.Node{Kind: har.Object}
-		nameNode := &har.Node{Kind: har.String, Key: "name", Value: parts[0]}
-		valueNode := &har.Node{Kind: har.String, Key: "value", Value: parts[1]}
-		headerObj.Children = []*har.Node{nameNode, valueNode}
-		headersNode.Children = append(headersNode.Children, headerObj)
+		e.ResponseHeaders = append(e.ResponseHeaders, har.Header{Name: parts[0], Value: parts[1]})
 	}
-	response.Children = []*har.Node{headersNode}
-	entry.Children = []*har.Node{request, response}
-	return entry
+	return e
 }
 
 func TestSecurityModelComputesResults(t *testing.T) {
@@ -47,11 +35,9 @@ func TestSecurityModelComputesResults(t *testing.T) {
 
 	// Entry with no security headers
 	e1 := makeSecurityEntry("http://example.com/page", 200, "example.com")
-	r1 := makeRawEntry("http://example.com/page", nil)
 
 	// Entry with all security headers
-	e2 := makeSecurityEntry("http://secure.com/page", 200, "secure.com")
-	r2 := makeRawEntry("http://secure.com/page", []string{
+	e2 := makeSecurityEntryWithHeaders("http://secure.com/page", 200, "secure.com", []string{
 		"strict-transport-security: max-age=31536000",
 		"x-content-type-options: nosniff",
 		"content-security-policy: default-src 'self'",
@@ -63,9 +49,8 @@ func TestSecurityModelComputesResults(t *testing.T) {
 	})
 
 	entries := []*har.EntryDetails{e1, e2}
-	rawEntries := []*har.Node{r1, r2}
 
-	m := NewSecurityModel(entries, rawEntries, th)
+	m := NewSecurityModel(entries, th)
 
 	if len(m.results) != 2 {
 		t.Fatalf("expected 2 results, got %d", len(m.results))
@@ -104,9 +89,8 @@ func TestSecurityModelView(t *testing.T) {
 	th := theme.New()
 
 	e1 := makeSecurityEntry("http://example.com/page", 200, "example.com")
-	r1 := makeRawEntry("http://example.com/page", nil)
 
-	m := NewSecurityModel([]*har.EntryDetails{e1}, []*har.Node{r1}, th)
+	m := NewSecurityModel([]*har.EntryDetails{e1}, th)
 	m.SetViewportSize(80, 20)
 
 	view := m.View()
@@ -129,13 +113,8 @@ func TestSecurityModelNavigation(t *testing.T) {
 		makeSecurityEntry("http://b.com/page", 200, "b.com"),
 		makeSecurityEntry("http://c.com/page", 200, "c.com"),
 	}
-	rawEntries := []*har.Node{
-		makeRawEntry("http://a.com/page", nil),
-		makeRawEntry("http://b.com/page", nil),
-		makeRawEntry("http://c.com/page", nil),
-	}
 
-	m := NewSecurityModel(entries, rawEntries, th)
+	m := NewSecurityModel(entries, th)
 
 	if m.cursor != 0 {
 		t.Errorf("expected cursor at 0, got %d", m.cursor)

@@ -87,6 +87,29 @@ func TestExportJSONPreservesKeyOrder(t *testing.T) {
 	}
 }
 
+func TestExportJSONPreservesNumberLiterals(t *testing.T) {
+	data := []byte(`{"a":12345678901234567890123,"b":9007199254740993,"f":1.2345678901234567,"e":1e300}`)
+	root, err := ParseBytes(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	exported, err := ExportJSON(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out := string(exported)
+	for _, want := range []string{
+		"12345678901234567890123",
+		"9007199254740993",
+		"1.2345678901234567",
+		"1e300",
+	} {
+		if !strings.Contains(out, want) {
+			t.Fatalf("exported JSON should contain %s verbatim, got: %s", want, out)
+		}
+	}
+}
+
 func TestScrubContent(t *testing.T) {
 	data := []byte(`{"log":{"version":"1.2","entries":[{"request":{"postData":{"text":"sensitive"}},"response":{"content":{"text":"secret","encoding":"base64"}}}]}}`)
 	root, err := ParseBytes(data)
@@ -181,5 +204,28 @@ func TestScrubOnlyAffectsContent(t *testing.T) {
 	// Authorization header value should remain (scrub doesn't touch headers)
 	if !strings.Contains(string(exported), "SECRET") {
 		t.Fatal("scrub should NOT remove header values (only content.text)")
+	}
+}
+
+func TestScrubEmptiesCookies(t *testing.T) {
+	data := []byte(`{"log":{"version":"1.2","entries":[{"request":{"method":"GET","url":"http://example.com/","cookies":[{"name":"session","value":"abc123","domain":"example.com","path":"/","httpOnly":true,"secure":true}]},"response":{"status":200,"statusText":"OK","cookies":[{"name":"tracker","value":"xyz","domain":"ads.com"}]}}]}}`)
+	root, err := ParseBytes(data)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ScrubContent(root)
+	exported, _ := ExportJSON(root)
+
+	// Sensitive cookie values must be gone
+	if strings.Contains(string(exported), "abc123") {
+		t.Fatal("scrub should remove request cookie values")
+	}
+	if strings.Contains(string(exported), "tracker") {
+		t.Fatal("scrub should remove response cookie objects")
+	}
+
+	// Cookies arrays should remain as empty arrays
+	if !strings.Contains(string(exported), `"cookies": []`) && !strings.Contains(string(exported), `"cookies":[]`) {
+		t.Fatalf("scrub should leave cookies as empty arrays, got: %s", exported)
 	}
 }

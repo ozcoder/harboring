@@ -35,13 +35,15 @@ json_bool       = { fg = "yellow" }
 json_null       = { fg = "gray" }
 json_bracket    = { fg = "fg" }
 json_unknown    = { fg = "unknown", italic = true }
-waterfall_dns     = { fg = "green" }
-waterfall_connect = { fg = "cyan" }
-waterfall_ssl     = { fg = "blue" }
-waterfall_send    = { fg = "yellow" }
-waterfall_wait    = { fg = "orange" }
-waterfall_receive = { fg = "magenta" }
+timing_dns     = { fg = "green" }
+timing_connect = { fg = "cyan" }
+timing_ssl     = { fg = "blue" }
+timing_send    = { fg = "yellow" }
+timing_wait    = { fg = "orange" }
+timing_receive = { fg = "magenta" }
+timing_blocked = { fg = "gray" }
 title           = { fg = "fg", bold = true }
 status_line     = { fg = "gray" }
 border          = { fg = "gray" }
 search_match    = { fg = "bg", bg = "yellow" }
+selection       = { bg = "#45475a", bold = true }

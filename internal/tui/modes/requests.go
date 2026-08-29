@@ -23,18 +23,18 @@ const (
 )
 
 type RequestsModel struct {
-	entries       []*har.EntryDetails
-	rawEntries    []*har.Node
-	cursor        int
-	scrollY       int
-	viewport      viewport.Model
-	theme         *theme.Engine
-	filter        string
-	filtered      []int
-	width         int
-	height        int
-	sortField     sortField
-	sortAsc       bool
+	entries        []*har.EntryDetails
+	rawEntries     []*har.Node
+	cursor         int
+	scrollY        int
+	viewport       viewport.Model
+	theme          *theme.Engine
+	filter         string
+	filtered       []int
+	width          int
+	height         int
+	sortField      sortField
+	sortAsc        bool
 	typeFilterMode bool
 	typeCursor     int
 	typeSelected   map[string]bool
@@ -369,40 +369,58 @@ func (m RequestsModel) View() string {
 	var dataLines []string
 	for _, idx := range m.filtered {
 		e := m.entries[idx]
+		isSelected := idx == m.filtered[m.cursor]
+
+		// When the row is selected every column and separator carries the
+		// highlight background so it spans the entire row.
+		plainStyle := lipgloss.NewStyle()
+		if isSelected {
+			plainStyle = plainStyle.
+				Background(lipgloss.Color(m.theme.GetSelectionBg())).
+				Foreground(lipgloss.Color(m.theme.GetFg()))
+		}
+
 		methodStyle := m.theme.GetStyle(fmt.Sprintf("method_%s", strings.ToLower(e.Method)))
 		statusStyle := getStatusStyle(m.theme, e.Status)
+		if isSelected {
+			bg := lipgloss.Color(m.theme.GetSelectionBg())
+			methodStyle = methodStyle.Background(bg)
+			statusStyle = statusStyle.Background(bg)
+		}
 
-		numStr := fmt.Sprintf("%-*d", numWidth, idx)
+		numStr := plainStyle.Render(fmt.Sprintf("%-*d", numWidth, idx))
 		methodStr := methodStyle.Render(fmt.Sprintf("%-*s", methodWidth, e.Method))
 
 		urlDisplay := e.URLPath
 		if lipgloss.Width(urlDisplay) > urlWidth {
-			urlDisplay = urlDisplay[:urlWidth-3] + "..."
+			urlDisplay = truncateWidth(urlDisplay, urlWidth)
 		}
-		urlStr := fmt.Sprintf("%-*s", urlWidth, urlDisplay)
+		urlStr := plainStyle.Render(fmt.Sprintf("%-*s", urlWidth, urlDisplay))
 
 		statusStr := statusStyle.Render(fmt.Sprintf("%-*d", statusWidth, e.Status))
 
-		sizeStr := fmt.Sprintf("%-*s", sizeWidth, formatSize(e.Size))
-		timeStr := fmt.Sprintf("%-*s", timeWidth, formatTime(e.Time))
+		sizeStr := plainStyle.Render(fmt.Sprintf("%-*s", sizeWidth, formatSize(e.Size)))
+		timeStr := plainStyle.Render(fmt.Sprintf("%-*s", timeWidth, formatTime(e.Time)))
 
-		warnStr := " "
+		warnStr := plainStyle.Render(padToWidth(" ", warnWidth))
 		if e.ShouldBeCompressed && !e.IsCompressed {
 			warnStyle := lipgloss.NewStyle().
 				Foreground(lipgloss.Color(m.theme.GetWarn())).
 				Bold(true)
-			warnStr = warnStyle.Render("⚠")
+			if isSelected {
+				warnStyle = warnStyle.Background(lipgloss.Color(m.theme.GetSelectionBg()))
+			}
+			warnStr = warnStyle.Render(padToWidth("⚠", warnWidth))
 		}
-		warnCol := padToWidth(warnStr, warnWidth)
 
-		line := fmt.Sprintf("%s %s %s %s %s %s %s", numStr, methodStr, warnCol, urlStr, statusStr, sizeStr, timeStr)
+		sep := func() string { return plainStyle.Render(" ") }
+		line := numStr + sep() + methodStr + sep() + warnStr + sep() + urlStr + sep() + statusStr + sep() + sizeStr + sep() + timeStr
 
-		isSelected := idx == m.filtered[m.cursor]
 		if isSelected {
-			selectedStyle := lipgloss.NewStyle().
-				Background(lipgloss.Color(m.theme.GetBg())).
-				Foreground(lipgloss.Color(m.theme.GetFg()))
-			line = selectedStyle.Render(line)
+			// Pad to the full row width so the highlight reaches the edge.
+			if pad := m.width - 1 - lipgloss.Width(line); pad > 0 {
+				line += plainStyle.Render(strings.Repeat(" ", pad))
+			}
 		}
 
 		dataLines = append(dataLines, line)

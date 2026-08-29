@@ -12,23 +12,23 @@ import (
 
 func makeDetailEntry() *har.EntryDetails {
 	return &har.EntryDetails{
-		Method:     "GET",
-		URL:        "http://example.com/very/long/path/that/scrolls",
-		Status:     200,
-		StatusText: "OK",
-		Size:       12345,
-		Time:       1500.5,
-		MimeType:   "text/html",
-		Started:    "2024-01-01T00:00:00Z",
-		DNS:        10.0,
-		Connect:    20.0,
-		SSL:        5.0,
-		Send:       1.0,
-		Wait:       100.0,
-		Receive:    1364.5,
+		Method:       "GET",
+		URL:          "http://example.com/very/long/path/that/scrolls",
+		Status:       200,
+		StatusText:   "OK",
+		Size:         12345,
+		Time:         1500.5,
+		MimeType:     "text/html",
+		Started:      "2024-01-01T00:00:00Z",
+		DNS:          10.0,
+		Connect:      20.0,
+		SSL:          5.0,
+		Send:         1.0,
+		Wait:         100.0,
+		Receive:      1364.5,
 		CacheControl: "public, max-age=3600",
-		MaxAge:     3600,
-		ETag:       "\"abc123\"",
+		MaxAge:       3600,
+		ETag:         "\"abc123\"",
 	}
 }
 
@@ -131,12 +131,30 @@ func TestDetailWindowResize(t *testing.T) {
 	}
 }
 
+func TestFormatDetailSize(t *testing.T) {
+	tests := []struct {
+		in   int64
+		want string
+	}{
+		{0, "0 B (0 bytes)"},
+		{512, "512 B (512 bytes)"},
+		{1024, "1.0 KB (1024 bytes)"},
+		{12345, "12.1 KB (12345 bytes)"},
+		{1024 * 1024, "1.0 MB (1048576 bytes)"},
+	}
+	for _, tt := range tests {
+		if got := formatDetailSize(tt.in); got != tt.want {
+			t.Errorf("formatDetailSize(%d) = %q, want %q", tt.in, got, tt.want)
+		}
+	}
+}
+
 func TestRenderTimingBarValueBeforeBarAligned(t *testing.T) {
 	th := theme.New()
 	m := NewDetailModel(nil, nil, th)
 	// Two different label lengths and values: bars must still start at the same column.
-	lineShort := m.renderTimingBar("DNS", 10.0, 100.0, 30, th.GetStyle("waterfall_dns"))
-	lineLong := m.renderTimingBar("Receive", 1364.5, 1500.5, 30, th.GetStyle("waterfall_receive"))
+	lineShort := m.renderTimingBar("DNS", 10.0, 100.0, 30, th.GetStyle("timing_dns"))
+	lineLong := m.renderTimingBar("Receive", 1364.5, 1500.5, 30, th.GetStyle("timing_receive"))
 
 	clean := func(s string) string { return strings.TrimSuffix(s, "\n") }
 	short, long := clean(lineShort), clean(lineLong)

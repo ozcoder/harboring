@@ -8,37 +8,39 @@ import (
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 	"github.com/harboring/harboring/internal/har"
+	"github.com/harboring/harboring/internal/report"
 	"github.com/harboring/harboring/internal/theme"
 )
 
 type SummaryModel struct {
-	entries    []*har.EntryDetails
-	theme      *theme.Engine
-	width      int
-	height     int
-	totalSize  int64
-	totalTime  float64
-	statusDist map[int]int
-	typeDist   map[string]int
-	typeSize   map[string]int64
-	domainSize map[string]int64
-	domainTime map[string]float64
-	domainCnt  map[string]int
-	graphSymbol string
+	entries       []*har.EntryDetails
+	theme         *theme.Engine
+	width         int
+	height        int
+	totalSize     int64
+	totalTime     float64
+	statusDist    map[int]int
+	typeDist      map[string]int
+	typeSize      map[string]int64
+	domainSize    map[string]int64
+	domainTime    map[string]float64
+	domainCnt     map[string]int
+	trackerResult report.TrackerResult
+	graphSymbol   string
 }
 
 func NewSummaryModel(entries []*har.EntryDetails, th *theme.Engine) SummaryModel {
 	m := SummaryModel{
-		entries:    entries,
-		theme:      th,
-		width:      80,
-		height:     24,
-		statusDist: make(map[int]int),
-		typeDist:   make(map[string]int),
-		typeSize:   make(map[string]int64),
-		domainSize: make(map[string]int64),
-		domainTime: make(map[string]float64),
-		domainCnt:  make(map[string]int),
+		entries:     entries,
+		theme:       th,
+		width:       80,
+		height:      24,
+		statusDist:  make(map[int]int),
+		typeDist:    make(map[string]int),
+		typeSize:    make(map[string]int64),
+		domainSize:  make(map[string]int64),
+		domainTime:  make(map[string]float64),
+		domainCnt:   make(map[string]int),
 		graphSymbol: "\u2588",
 	}
 	m.compute()
@@ -89,6 +91,8 @@ func (m *SummaryModel) compute() {
 			m.domainCnt[e.Domain]++
 		}
 	}
+
+	m.trackerResult = report.AnalyzeTrackers(m.entries)
 }
 
 func classifyByMime(mime string) string {
@@ -133,22 +137,27 @@ func (m SummaryModel) View() string {
 	warnStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(m.theme.GetWarn()))
 
 	halfW := m.width / 2
-	thirdH := m.height / 3
+	fifthH := m.height / 5
+	topH := fifthH * 4
+	botH := m.height - topH
 
-	overviewH := thirdH
-	statusH := thirdH
-	typeH := thirdH
-	domainH := thirdH
+	overviewH := topH / 2
+	statusH := topH / 2
+	typeH := topH - overviewH
+	domainH := topH - statusH
 
 	overview := m.renderOverview(overviewH, halfW, titleStyle, valueStyle)
 	status := m.renderStatusCodes(statusH, halfW, titleStyle, valueStyle, warnStyle)
 	types := m.renderResourceTypes(typeH, halfW, titleStyle, valueStyle)
 	domains := m.renderDomains(domainH, halfW, titleStyle, valueStyle)
 
-	left := joinVertical(overview, types, m.height)
-	right := joinVertical(status, domains, m.height)
+	left := joinVertical(overview, types, topH)
+	right := joinVertical(status, domains, topH)
+	top := lipgloss.JoinHorizontal(lipgloss.Top, left, right)
 
-	return lipgloss.JoinHorizontal(lipgloss.Top, left, right)
+	trackers := m.renderTrackers(botH, halfW*2-4, titleStyle, valueStyle, warnStyle)
+
+	return stackVertical(top, trackers, topH)
 }
 
 func (m SummaryModel) renderOverview(h, w int, titleStyle, valueStyle lipgloss.Style) string {
@@ -352,8 +361,8 @@ func (m SummaryModel) buildBox(title string, lines []string, w, h int) string {
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color(m.theme.GetFg())).
-		Width(w - 4).
-		Height(h - 2).
+		Width(w-4).
+		Height(h-2).
 		Padding(0, 1)
 
 	return boxStyle.Render(content)
@@ -381,4 +390,72 @@ func joinVertical(top, bottom string, totalH int) string {
 	}
 
 	return strings.Join(result, "\n")
+}
+
+// stackVertical places top above bottom, giving top exactly topH lines.
+func stackVertical(top, bottom string, topH int) string {
+	topLines := strings.Split(top, "\n")
+	bottomLines := strings.Split(bottom, "\n")
+
+	result := make([]string, 0, topH+len(bottomLines))
+	for i := 0; i < topH && i < len(topLines); i++ {
+		result = append(result, topLines[i])
+	}
+	for len(result) < topH {
+		result = append(result, "")
+	}
+	result = append(result, bottomLines...)
+	return strings.Join(result, "\n")
+}
+
+func (m SummaryModel) renderTrackers(h, w int, titleStyle, valueStyle, warnStyle lipgloss.Style) string {
+	r := m.trackerResult
+
+	var lines []string
+	lines = append(lines, titleStyle.Render(" Third-party Trackers "))
+	lines = append(lines, "")
+
+	lines = append(lines, valueStyle.Render(fmt.Sprintf("  Tracker Requests: %d / %d (%.1f%%)", r.TrackerRequests, r.TotalRequests, r.TrackerPercent)))
+	lines = append(lines, valueStyle.Render(fmt.Sprintf("  Tracker Size:     %s (%.1f%%)", r.TrackerSizeHuman, r.TrackerSizePercent)))
+
+	if len(r.ByCategory) > 0 {
+		lines = append(lines, "")
+		type catInfo struct {
+			name  string
+			count int
+		}
+		var cats []catInfo
+		for name, count := range r.ByCategory {
+			cats = append(cats, catInfo{name: name, count: count})
+		}
+		sort.Slice(cats, func(i, j int) bool { return cats[i].count > cats[j].count })
+
+		inner := w - 8
+		maxCount := 0
+		for _, c := range cats {
+			if c.count > maxCount {
+				maxCount = c.count
+			}
+		}
+		for _, c := range cats {
+			name := c.name
+			if len(name) > 14 {
+				name = name[:14]
+			}
+			countStr := fmt.Sprintf("%d", c.count)
+			barWidth := inner - (4 + 14 + 1 + len(countStr))
+			if barWidth < 0 {
+				barWidth = 0
+			}
+			barLen := 0
+			if maxCount > 0 {
+				barLen = (c.count * barWidth) / maxCount
+			}
+			bar := strings.Repeat(m.graphSymbol, barLen)
+			lines = append(lines, fmt.Sprintf("  %-14s %s %s", name, warnStyle.Render(bar), countStr))
+		}
+	}
+
+	box := m.buildBox("Third-party Trackers", lines, w, h)
+	return box
 }

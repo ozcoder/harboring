@@ -82,7 +82,7 @@ func (m HelpModel) buildHelpScrollbar(total, visible, offset int) []string {
 	maxScroll := total - visible
 	barPos := 1
 	if maxScroll > 0 {
-		barPos = 1 + (offset * (scrollbarHeight - 2)) / maxScroll
+		barPos = 1 + (offset*(scrollbarHeight-2))/maxScroll
 	}
 	if barPos > scrollbarHeight-2 {
 		barPos = scrollbarHeight - 2
@@ -114,7 +114,7 @@ func (m HelpModel) View() tea.View {
 
 	sb.WriteString(sectionStyle.Render("Global"))
 	sb.WriteString("\n")
-	sb.WriteString(renderHelpLine(keyStyle, "1/2/3/4/5/6", "Switch to Tree / Requests / Waterfall / Summary / Cache / Security mode"))
+	sb.WriteString(renderHelpLine(keyStyle, "1/2/3/4/5/6/7", "Switch to Tree / Requests / Timings / Summary / Cache / Security / Timeline mode"))
 	sb.WriteString(renderHelpLine(keyStyle, "/", "Open search"))
 	sb.WriteString(renderHelpLine(keyStyle, "?", "Show this help"))
 	sb.WriteString(renderHelpLine(keyStyle, "o", "Open options"))
@@ -145,7 +145,7 @@ func (m HelpModel) View() tea.View {
 	sb.WriteString(renderHelpLine(keyStyle, "S", "Toggle sort direction"))
 	sb.WriteString("\n")
 
-	sb.WriteString(sectionStyle.Render("Waterfall Mode"))
+	sb.WriteString(sectionStyle.Render("Timings Mode"))
 	sb.WriteString("\n")
 	sb.WriteString(renderHelpLine(keyStyle, "j/k or Up/Down", "Move down/up"))
 	sb.WriteString(renderHelpLine(keyStyle, "PgDn/Space/f", "Page down"))

@@ -72,7 +72,7 @@ func (m SearchModel) View() string {
 
 	resultStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(m.theme.GetFg()))
 	selectedStyle := lipgloss.NewStyle().
-		Background(lipgloss.Color(m.theme.GetBg())).
+		Background(lipgloss.Color(m.theme.GetSelectionBg())).
 		Foreground(lipgloss.Color(m.theme.GetFg())).
 		Bold(true)
 

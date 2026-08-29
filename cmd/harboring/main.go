@@ -3,141 +3,295 @@ package main
 import (
 	"fmt"
 	"os"
-	"sort"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
 	"github.com/harboring/harboring/internal/har"
+	"github.com/harboring/harboring/internal/report"
 	"github.com/harboring/harboring/internal/theme"
 	"github.com/harboring/harboring/internal/tui"
 )
 
-const version = "0.2"
+const version = "0.3.0"
 
 func main() {
-	if len(os.Args) < 2 {
+	args := os.Args[1:]
+	if len(args) == 0 {
 		printUsage()
 		os.Exit(1)
 	}
 
-	args := os.Args[1:]
-	sub := args[0]
-
-	switch sub {
-	case "-h", "--help", "help":
-		printUsage()
-	case "--version", "-v", "version":
-		fmt.Printf("harboring %s\n", version)
-	case "view":
-		cmdView(args[1:])
-	case "dump":
-		cmdDump(args[1:])
-	case "scrub":
-		cmdScrub(args[1:])
-	case "shrink":
-		cmdShrink(args[1:])
-	case "expand":
-		cmdExpand(args[1:])
-	case "stats":
-		cmdStats(args[1:])
-	case "perf":
-		cmdPerf(args[1:])
-	case "validate":
-		cmdValidate(args[1:])
-	default:
-		if strings.HasPrefix(sub, "-") {
-			fmt.Fprintf(os.Stderr, "error: unknown flag %s\n", sub)
-			os.Exit(1)
-		}
-		cmdView(args)
+	opts, err := parseArgs(args)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
 	}
+
+	if opts.help {
+		printUsage()
+		return
+	}
+	if opts.version {
+		fmt.Printf("harboring %s\n", version)
+		return
+	}
+
+	// --list is an informational, standalone command.
+	if opts.list != "" {
+		switch opts.list {
+		case "themes":
+			listThemes()
+		case "trackers":
+			listTrackers()
+		}
+		return
+	}
+
+	switch opts.mode {
+	case "", "view":
+		cmdView(opts)
+	case "dump":
+		cmdDump(opts)
+	case "scrub":
+		cmdScrub(opts)
+	case "shrink":
+		cmdShrink(opts)
+	case "expand":
+		cmdExpand(opts)
+	case "stats":
+		cmdStats(opts)
+	case "perf":
+		cmdPerf(opts)
+	case "cache":
+		cmdCache(opts)
+	case "security":
+		cmdSecurity(opts)
+	case "trackers":
+		cmdTrackers(opts)
+	case "validate":
+		cmdValidate(opts)
+	case "fields":
+		cmdFields(opts)
+	case "diff":
+		cmdDiff(opts)
+	}
+}
+
+// options holds the parsed command line. mode selects the operation and is one
+// of "", "view", "dump", "scrub", "shrink", "expand", "stats", "perf", "cache",
+// "security", "validate", "fields", or "diff"; an empty mode means the default viewer.
+type options struct {
+	mode         string
+	file         string
+	file2        string
+	theme        string
+	output       string
+	markdown     bool
+	jsonOut      bool
+	help         bool
+	version      bool
+	fields       string
+	list         string
+	trackersFile string
+}
+
+// parseArgs converts command line flags into options. Operations are selected
+// with a single --<name> flag; bare positional arguments are input files.
+func parseArgs(args []string) (*options, error) {
+	o := &options{}
+	var positionals []string
+	for i := 0; i < len(args); i++ {
+		a := args[i]
+		switch a {
+		case "-h", "--help":
+			o.help = true
+		case "-v", "--version":
+			o.version = true
+		case "-m", "--markdown":
+			o.markdown = true
+		case "-j", "--json":
+			o.jsonOut = true
+		case "--view", "--dump", "--scrub", "--shrink", "--expand",
+			"--stats", "--perf", "--cache", "--security", "--trackers", "--validate":
+			mode := a[2:]
+			if o.mode != "" && o.mode != mode {
+				return nil, fmt.Errorf("conflicting modes: --%s and --%s", o.mode, mode)
+			}
+			o.mode = mode
+		case "--diff":
+			if o.mode != "" && o.mode != "diff" {
+				return nil, fmt.Errorf("conflicting modes: --%s and --diff", o.mode)
+			}
+			o.mode = "diff"
+		case "--fields":
+			if i+1 >= len(args) {
+				return nil, fmt.Errorf("--fields requires a comma-separated list of fields")
+			}
+			o.fields = args[i+1]
+			if o.mode != "" && o.mode != "fields" {
+				return nil, fmt.Errorf("conflicting modes: --%s and --fields", o.mode)
+			}
+			o.mode = "fields"
+			i++
+		case "--theme":
+			if i+1 >= len(args) {
+				return nil, fmt.Errorf("--theme requires an argument")
+			}
+			o.theme = args[i+1]
+			i++
+		case "--list":
+			if i+1 >= len(args) {
+				return nil, fmt.Errorf("--list requires an argument (themes or trackers)")
+			}
+			o.list = args[i+1]
+			if o.list != "themes" && o.list != "trackers" {
+				return nil, fmt.Errorf("--list: unknown category %q (expected \"themes\" or \"trackers\")", o.list)
+			}
+			i++
+		case "--trackers-file":
+			if i+1 >= len(args) {
+				return nil, fmt.Errorf("--trackers-file requires a file path")
+			}
+			o.trackersFile = args[i+1]
+			i++
+		case "-o":
+			if i+1 >= len(args) {
+				return nil, fmt.Errorf("-o requires an argument")
+			}
+			o.output = args[i+1]
+			i++
+		default:
+			if a != "-" && strings.HasPrefix(a, "-") {
+				return nil, fmt.Errorf("unknown flag: %s", a)
+			}
+			positionals = append(positionals, a)
+		}
+	}
+	if len(positionals) > 2 {
+		return nil, fmt.Errorf("unexpected extra argument: %s", positionals[2])
+	}
+	if o.markdown && o.jsonOut {
+		return nil, fmt.Errorf("--markdown and --json are mutually exclusive")
+	}
+	if len(positionals) >= 1 {
+		o.file = positionals[0]
+	}
+	if len(positionals) == 2 {
+		o.file2 = positionals[1]
+	}
+	// --diff requires two files
+	if o.mode == "diff" && o.file2 == "" {
+		return nil, fmt.Errorf("--diff requires two HAR files")
+	}
+	// non-diff modes only accept one file
+	if o.mode != "diff" && o.mode != "fields" && o.file2 != "" {
+		return nil, fmt.Errorf("unexpected extra argument: %s", o.file2)
+	}
+	return o, nil
 }
 
 func printUsage() {
 	fmt.Println(`harboring — HTTP Archive Reader In Go
 
 Usage:
-  harboring <file.har>              Open TUI viewer
-  harboring view <file.har>         Open TUI viewer
-  harboring dump <file.har>         Dump formatted JSON to stdout
-  harboring scrub <file.har> [-o]   Scrub content sections
-  harboring shrink <file.har> [-o]  Minify JSON (remove whitespace)
-  harboring expand <file.har> [-o]  Pretty-print JSON
-  harboring stats <file.har>        Show summary statistics
-  harboring perf <file.har>         Generate performance report
-  harboring validate <file.har>     Validate HAR structure
-  harboring help                    Show this help
+  harboring <file.har>              Open TUI viewer (default)
+  harboring --view <file.har>       Open TUI viewer
+  harboring --dump <file.har>       Dump formatted JSON to stdout
+  harboring --scrub <file.har>      Scrub content sections
+  harboring --shrink <file.har>     Minify JSON (remove whitespace)
+  harboring --expand <file.har>     Pretty-print JSON
+  harboring --stats <file.har>      Show summary statistics
+  harboring --perf <file.har>       Generate performance report
+  harboring --cache <file.har>      Show cache summary
+  harboring --security <file.har>   Show security headers analysis
+  harboring --trackers <file.har>   Show third-party tracker analysis
+  harboring --validate <file.har>   Validate HAR structure
+  harboring --fields <fields> <file.har>  Output HAR with only the specified fields
+  harboring --list themes                 List available themes
+  harboring --list trackers               List known tracker domains
+  harboring --help                  Show this help
+  harboring --version               Show version
 
 Flags:
-  --theme <name|path>  Theme override (TUI mode)
-  --scrub              Scrub content sections (view/dump)
-  --shrink             Remove whitespace (view/dump)
-  --version            Show version
-  -o <file>            Output file (scrub/shrink/expand commands)`)
+  --view, --dump, --scrub, --shrink, --expand, --stats, --perf,
+  --cache, --security, --trackers, --validate, --fields, --diff
+                                    Select the operation (view is the default;
+                                    exactly one may be given)
+  --theme <name|path>               Theme override (view mode)
+  --trackers-file <path>            Load additional tracker domains from a TOML file
+                                    (used with --trackers)
+  --list <themes|trackers>          List built-in themes or known tracker domains
+  --markdown, -m                    Render stats/perf/cache/security/trackers as Markdown
+  --json, -j                        Render stats/perf/cache/security/trackers as JSON
+  -o <file>                         Output file (--scrub/--shrink/--expand/--stats/--perf/--cache/--security/--trackers/--fields)
+  --help, -h                        Show this help
+  --version, -v                     Show version
+
+Non-interactive modes (--dump, --scrub, --shrink, --expand, --stats, --perf,
+--cache, --security, --trackers, --validate, --fields) accept a file path,
+an explicit "-" for stdin, or piped input with no argument, and write to
+stdout unless -o is given.
+
+  --fields takes a comma-separated list of dot-path field names
+  (e.g. timings.wait,request.url,response._transferSize). Paths are
+  relative to each entry; matching objects keep only the named children.`)
 }
 
-func cmdView(args []string) {
-	file, themeFlag, doScrub, doShrink := parseViewArgs(args)
-	if file == "" {
+func cmdView(o *options) {
+	if o.file == "" {
 		fmt.Fprintln(os.Stderr, "error: no HAR file specified")
 		os.Exit(1)
 	}
 
-	root, err := har.ParseFile(file)
+	root, err := har.ParseFile(o.file)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 
-	if doScrub {
-		har.ScrubContent(root)
-	}
-	if doShrink {
-		har.ShrinkContent(root)
-	}
-
 	th := theme.New()
-	th.LoadStartup(themeFlag)
+	th.LoadStartup(o.theme)
 
-	p := tea.NewProgram(tui.NewApp(root, file, th))
+	p := tea.NewProgram(tui.NewApp(root, o.file, th))
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func cmdDump(args []string) {
-	file := ""
-	doScrub := false
-	doShrink := false
-
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "--scrub":
-			doScrub = true
-		case "--shrink":
-			doShrink = true
-		default:
-			file = args[i]
-		}
-	}
-
-	if file == "" {
-		fmt.Fprintln(os.Stderr, "error: no HAR file specified")
+func cmdDiff(o *options) {
+	if o.file == "" || o.file2 == "" {
+		fmt.Fprintln(os.Stderr, "error: --diff requires two HAR files")
 		os.Exit(1)
 	}
 
-	root, err := har.ParseFile(file)
+	left, err := har.ParseFile(o.file)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 
-	if doScrub {
-		har.ScrubContent(root)
+	right, err := har.ParseFile(o.file2)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
 	}
-	if doShrink {
-		har.ShrinkContent(root)
+
+	th := theme.New()
+	th.LoadStartup(o.theme)
+
+	p := tea.NewProgram(tui.NewDiffApp(left, right, o.file, o.file2, th))
+	if _, err := p.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func cmdDump(o *options) {
+	root, err := loadRoot(o.file)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
 	}
 
 	data, err := har.ExportJSON(root)
@@ -146,26 +300,38 @@ func cmdDump(args []string) {
 		os.Exit(1)
 	}
 
-	fmt.Println(string(data))
+	fmt.Print(string(data))
 }
 
-func cmdScrub(args []string) {
-	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "error: no HAR file specified")
+func cmdFields(o *options) {
+	root, err := loadRoot(o.file)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 
-	file := args[0]
-	output := ""
+	paths := strings.Split(o.fields, ",")
+	projected := har.ProjectFilters(root, paths)
 
-	for i := 1; i < len(args); i++ {
-		if args[i] == "-o" && i+1 < len(args) {
-			output = args[i+1]
-			i++
-		}
+	data, err := har.ExportJSON(projected)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: export: %v\n", err)
+		os.Exit(1)
 	}
 
-	root, err := har.ParseFile(file)
+	if o.output == "" {
+		fmt.Print(string(data))
+		return
+	}
+
+	if err := har.WriteFileAuto(o.output, data); err != nil {
+		fmt.Fprintf(os.Stderr, "error: write output: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func cmdScrub(o *options) {
+	root, err := loadRoot(o.file)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
@@ -179,35 +345,20 @@ func cmdScrub(args []string) {
 		os.Exit(1)
 	}
 
-	if output == "" {
-		fmt.Println(string(data))
+	if o.output == "" {
+		fmt.Print(string(data))
 		return
 	}
 
-	if err := os.WriteFile(output, data, 0644); err != nil {
+	if err := har.WriteFileAuto(o.output, data); err != nil {
 		fmt.Fprintf(os.Stderr, "error: write output: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func cmdShrink(args []string) {
-	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "error: no HAR file specified")
-		os.Exit(1)
-	}
-
-	file := args[0]
-	output := ""
-
-	for i := 1; i < len(args); i++ {
-		if args[i] == "-o" && i+1 < len(args) {
-			output = args[i+1]
-			i++
-		}
-	}
-
-	if output == "" {
-		data, err := os.ReadFile(file)
+func cmdShrink(o *options) {
+	if o.output == "" {
+		data, err := readInputBytes(o.file)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
@@ -221,30 +372,33 @@ func cmdShrink(args []string) {
 		return
 	}
 
-	if err := har.MinifyFile(file, output); err != nil {
+	if o.file == "" || o.file == "-" {
+		data, err := readInputBytes(o.file)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		minified, err := har.MinifyJSON(data)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		if err := har.WriteFileAuto(o.output, minified); err != nil {
+			fmt.Fprintf(os.Stderr, "error: write output: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if err := har.MinifyFile(o.file, o.output); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func cmdExpand(args []string) {
-	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "error: no HAR file specified")
-		os.Exit(1)
-	}
-
-	file := args[0]
-	output := ""
-
-	for i := 1; i < len(args); i++ {
-		if args[i] == "-o" && i+1 < len(args) {
-			output = args[i+1]
-			i++
-		}
-	}
-
-	if output == "" {
-		data, err := os.ReadFile(file)
+func cmdExpand(o *options) {
+	if o.output == "" {
+		data, err := readInputBytes(o.file)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)
@@ -258,231 +412,181 @@ func cmdExpand(args []string) {
 		return
 	}
 
-	if err := har.ExpandFile(file, output); err != nil {
+	if o.file == "" || o.file == "-" {
+		data, err := readInputBytes(o.file)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		expanded, err := har.ExpandJSON(data)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		if err := har.WriteFileAuto(o.output, expanded); err != nil {
+			fmt.Fprintf(os.Stderr, "error: write output: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+
+	if err := har.ExpandFile(o.file, o.output); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func cmdStats(args []string) {
-	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "error: no HAR file specified")
-		os.Exit(1)
-	}
-
-	root, err := har.ParseFile(args[0])
+func cmdStats(o *options) {
+	details, err := loadDetails(o.file)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 
-	entries := har.GetEntries(root)
-	if len(entries) == 0 {
-		fmt.Println("No entries found.")
+	if o.jsonOut {
+		data, err := report.StatsJSONReport(details)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		writeReport(data, o)
 		return
 	}
-
-	details := make([]*har.EntryDetails, len(entries))
-	for i, e := range entries {
-		details[i] = har.GetEntryDetails(e)
-	}
-
-	var totalSize int64
-	var totalTime float64
-	methods := map[string]int{}
-	statuses := map[int]int{}
-
-	for _, d := range details {
-		totalSize += d.Size
-		totalTime += d.Time
-		methods[d.Method]++
-		statuses[d.Status]++
-	}
-
-	fmt.Printf("Requests:    %d\n", len(entries))
-	fmt.Printf("Total size:  %s\n", formatBytes(totalSize))
-	fmt.Printf("Total time:  %.0f ms\n", totalTime)
-	fmt.Println()
-	fmt.Println("Methods:")
-	for m, c := range methods {
-		fmt.Printf("  %-8s %d\n", m, c)
-	}
-	fmt.Println()
-	fmt.Println("Status codes:")
-	for s, c := range statuses {
-		fmt.Printf("  %d  %d\n", s, c)
-	}
-
-	type timedEntry struct {
-		detail *har.EntryDetails
-		entry  *har.Node
-	}
-	slowest := make([]timedEntry, 0, len(details))
-	for i, d := range details {
-		slowest = append(slowest, timedEntry{detail: d, entry: entries[i]})
-	}
-	for i := 1; i < len(slowest); i++ {
-		for j := i; j > 0 && slowest[j].detail.Time > slowest[j-1].detail.Time; j-- {
-			slowest[j], slowest[j-1] = slowest[j-1], slowest[j]
-		}
-	}
-	limit := 5
-	if len(slowest) < limit {
-		limit = len(slowest)
-	}
-	if limit > 0 {
-		fmt.Println()
-		fmt.Println("Top 5 slowest:")
-		for i := 0; i < limit; i++ {
-			d := slowest[i].detail
-			fmt.Printf("  %.0f ms  %s %s\n", d.Time, d.Method, d.URL)
-		}
-	}
+	writeReport([]byte(report.StatsReport(details, o.markdown)), o)
 }
 
-func cmdPerf(args []string) {
-	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "error: no HAR file specified")
-		os.Exit(1)
-	}
-
-	root, err := har.ParseFile(args[0])
+func cmdPerf(o *options) {
+	details, err := loadDetails(o.file)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 
-	entries := har.GetEntries(root)
-	if len(entries) == 0 {
-		fmt.Println("No entries found.")
+	if o.jsonOut {
+		data, err := report.PerfJSONReport(details)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		writeReport(data, o)
 		return
 	}
-
-	details := make([]*har.EntryDetails, len(entries))
-	for i, e := range entries {
-		details[i] = har.GetEntryDetails(e)
-	}
-
-	var totalSize int64
-	var totalTime float64
-	var ttfbs []float64
-	byType := map[string]int64{}
-	byDomain := map[string]int64{}
-	byStatus := map[int]int{}
-	largest := (*har.EntryDetails)(nil)
-	slowestEntry := (*har.EntryDetails)(nil)
-
-	for _, d := range details {
-		totalSize += d.Size
-		totalTime += d.Time
-		if d.Wait > 0 {
-			ttfbs = append(ttfbs, d.Wait)
-		}
-		byType[d.ResourceType] += d.Size
-		byDomain[d.Domain] += d.Size
-		byStatus[d.Status]++
-		if largest == nil || d.Size > largest.Size {
-			largest = d
-		}
-		if slowestEntry == nil || d.Time > slowestEntry.Time {
-			slowestEntry = d
-		}
-	}
-
-	// Compute percentiles
-	sort.Float64s(ttfbs)
-	p50 := percentile(ttfbs, 50)
-	p90 := percentile(ttfbs, 90)
-	p95 := percentile(ttfbs, 95)
-	p99 := percentile(ttfbs, 99)
-
-	fmt.Printf("HAR Performance Report\n")
-	fmt.Printf("========================\n\n")
-	fmt.Printf("Requests:        %d\n", len(entries))
-	fmt.Printf("Total size:      %s\n", formatBytes(totalSize))
-	fmt.Printf("Total load time: %.0f ms\n", totalTime)
-	fmt.Println()
-
-	fmt.Println("TTFB Percentiles:")
-	fmt.Printf("  p50: %.0f ms\n", p50)
-	fmt.Printf("  p90: %.0f ms\n", p90)
-	fmt.Printf("  p95: %.0f ms\n", p95)
-	fmt.Printf("  p99: %.0f ms\n", p99)
-	fmt.Println()
-
-	fmt.Println("By Resource Type:")
-	type typeKV struct {
-		k string
-		v int64
-	}
-	types := make([]typeKV, 0, len(byType))
-	for t, s := range byType {
-		if t == "" {
-			t = "other"
-		}
-		types = append(types, typeKV{k: t, v: s})
-	}
-	sort.Slice(types, func(i, j int) bool { return types[i].v > types[j].v })
-	for _, t := range types {
-		fmt.Printf("  %-12s %s\n", t.k+":", formatBytes(t.v))
-	}
-	fmt.Println()
-
-	fmt.Println("By Domain (top 10):")
-	type kv struct {
-		k string
-		v int64
-	}
-	domains := make([]kv, 0, len(byDomain))
-	for k, v := range byDomain {
-		domains = append(domains, kv{k, v})
-	}
-	sort.Slice(domains, func(i, j int) bool { return domains[i].v > domains[j].v })
-	for i, d := range domains {
-		if i >= 10 {
-			break
-		}
-		fmt.Printf("  %-30s %s\n", d.k+":", formatBytes(d.v))
-	}
-	fmt.Println()
-
-	fmt.Println("Status Codes:")
-	for s, c := range byStatus {
-		fmt.Printf("  %d: %d\n", s, c)
-	}
-	fmt.Println()
-
-	fmt.Println("Largest resource:")
-	if largest != nil {
-		fmt.Printf("  %s %s (%s)\n", largest.Method, largest.URL, formatBytes(largest.Size))
-	}
-	fmt.Println("Slowest resource:")
-	if slowestEntry != nil {
-		fmt.Printf("  %.0f ms  %s %s\n", slowestEntry.Time, slowestEntry.Method, slowestEntry.URL)
-	}
+	writeReport([]byte(report.PerfReport(details, o.markdown)), o)
 }
 
-func percentile(sorted []float64, p float64) float64 {
-	if len(sorted) == 0 {
-		return 0
-	}
-	idx := int(float64(len(sorted)-1) * p / 100)
-	if idx < 0 {
-		idx = 0
-	}
-	if idx >= len(sorted) {
-		idx = len(sorted) - 1
-	}
-	return sorted[idx]
-}
-
-func cmdValidate(args []string) {
-	if len(args) == 0 {
-		fmt.Fprintln(os.Stderr, "error: no HAR file specified")
+func cmdCache(o *options) {
+	details, err := loadDetails(o.file)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
 
-	root, err := har.ParseFile(args[0])
+	if o.jsonOut {
+		data, err := report.CacheJSONReport(details)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		writeReport(data, o)
+		return
+	}
+	writeReport([]byte(report.CacheReport(details, o.markdown)), o)
+}
+
+func cmdSecurity(o *options) {
+	details, err := loadDetails(o.file)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if o.jsonOut {
+		data, err := report.SecurityJSONReport(details)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		writeReport(data, o)
+		return
+	}
+	writeReport([]byte(report.SecurityReport(details, o.markdown)), o)
+}
+
+func cmdTrackers(o *options) {
+	details, err := loadDetails(o.file)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if o.trackersFile != "" {
+		if err := report.LoadTrackersFile(o.trackersFile); err != nil {
+			fmt.Fprintf(os.Stderr, "error: --trackers-file: %v\n", err)
+			os.Exit(1)
+		}
+	}
+
+	if o.jsonOut {
+		data, err := report.TrackersJSONReport(details)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		writeReport(data, o)
+		return
+	}
+	writeReport([]byte(report.TrackersReport(details, o.markdown)), o)
+}
+
+// listThemes prints the built-in theme names.
+func listThemes() {
+	th := theme.New()
+	fmt.Println("Built-in themes:")
+	for _, name := range th.Names() {
+		fmt.Printf("  %s\n", name)
+	}
+}
+
+// listTrackers prints the effective tracker domains grouped by category.
+func listTrackers() {
+	byCat := map[report.TrackerCategory][]string{}
+	for _, t := range report.KnownTrackers() {
+		byCat[t.Category] = append(byCat[t.Category], t.Domain)
+	}
+	categories := []report.TrackerCategory{
+		report.TrackerAnalytics,
+		report.TrackerAdvertising,
+		report.TrackerSocial,
+		report.TrackerFingerprinting,
+		report.TrackerOther,
+	}
+	fmt.Println("Known tracker domains:")
+	for _, cat := range categories {
+		domains := byCat[cat]
+		if len(domains) == 0 {
+			continue
+		}
+		fmt.Printf("  %s:\n", cat)
+		for _, d := range domains {
+			fmt.Printf("    %s\n", d)
+		}
+	}
+}
+
+// writeReport writes data to -o if set, otherwise to stdout.
+func writeReport(data []byte, o *options) {
+	if o.output != "" {
+		if err := os.WriteFile(o.output, data, 0o644); err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		return
+	}
+	os.Stdout.Write(data)
+}
+
+func cmdValidate(o *options) {
+	root, err := loadRoot(o.file)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
@@ -523,6 +627,64 @@ func cmdValidate(args []string) {
 	fmt.Printf("VALID: %d entries, all have request and response\n", len(entriesNode.Children))
 }
 
+// stdinIsTerminal reports whether os.Stdin is an interactive terminal (as
+// opposed to a pipe or redirected file). Used to avoid blocking on stdin when a
+// non-interactive mode is run with no file argument.
+func stdinIsTerminal() bool {
+	fi, err := os.Stdin.Stat()
+	if err != nil {
+		return false
+	}
+	return fi.Mode()&os.ModeCharDevice != 0
+}
+
+// loadRoot parses a HAR from file (a path), or from stdin when file is "" or
+// "-". If file is empty and stdin is a terminal, it returns an error instead of
+// blocking on interactive input.
+func loadRoot(file string) (*har.Node, error) {
+	if file != "-" {
+		if file != "" {
+			return har.ParseFile(file)
+		}
+		if stdinIsTerminal() {
+			return nil, fmt.Errorf("no HAR file specified (pipe a HAR via stdin or pass a file path)")
+		}
+	}
+	return har.ParseReader(os.Stdin)
+}
+
+// readInputBytes returns the raw input bytes from file (a path) or from stdin
+// when file is "" or "-".
+func readInputBytes(file string) ([]byte, error) {
+	if file != "-" {
+		if file != "" {
+			return har.ReadFileLimited(file)
+		}
+		if stdinIsTerminal() {
+			return nil, fmt.Errorf("no HAR file specified (pipe a HAR via stdin or pass a file path)")
+		}
+	}
+	return har.ReadAllLimited(os.Stdin)
+}
+
+// loadDetails parses the HAR at file (path, "-" or piped stdin) and returns the
+// per-entry details, erroring if there are no entries.
+func loadDetails(file string) ([]*har.EntryDetails, error) {
+	root, err := loadRoot(file)
+	if err != nil {
+		return nil, err
+	}
+	entries := har.GetEntries(root)
+	if len(entries) == 0 {
+		return nil, fmt.Errorf("no entries found")
+	}
+	details := make([]*har.EntryDetails, len(entries))
+	for i, e := range entries {
+		details[i] = har.GetEntryDetails(e)
+	}
+	return details, nil
+}
+
 func findChild(n *har.Node, key string) *har.Node {
 	for _, child := range n.Children {
 		if child.Key == key {
@@ -530,40 +692,4 @@ func findChild(n *har.Node, key string) *har.Node {
 		}
 	}
 	return nil
-}
-
-func parseViewArgs(args []string) (string, string, bool, bool) {
-	file := ""
-	themeFlag := ""
-	doScrub := false
-	doShrink := false
-	for i := 0; i < len(args); i++ {
-		switch args[i] {
-		case "--theme":
-			if i+1 < len(args) {
-				themeFlag = args[i+1]
-				i++
-			}
-		case "--scrub":
-			doScrub = true
-		case "--shrink":
-			doShrink = true
-		default:
-			file = args[i]
-		}
-	}
-	return file, themeFlag, doScrub, doShrink
-}
-
-func formatBytes(b int64) string {
-	const unit = 1024
-	if b < unit {
-		return fmt.Sprintf("%d B", b)
-	}
-	div, exp := int64(unit), 0
-	for n := b / unit; n >= unit; n /= unit {
-		div *= unit
-		exp++
-	}
-	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
 }

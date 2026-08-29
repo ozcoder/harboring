@@ -26,13 +26,13 @@ type TreeModel struct {
 func NewTreeModel(root *har.Node, th *theme.Engine, render RenderLineFunc) TreeModel {
 	vp := viewport.New(viewport.WithWidth(80), viewport.WithHeight(20))
 	tm := TreeModel{
-		root:   root,
-		Cursor: 0,
+		root:     root,
+		Cursor:   0,
 		viewport: vp,
-		theme:  th,
-		render: render,
-		width:  80,
-		height: 20,
+		theme:    th,
+		render:   render,
+		width:    80,
+		height:   20,
 	}
 	tm.refreshNodes()
 	return tm
@@ -87,6 +87,16 @@ func (m TreeModel) handleKey(msg tea.KeyPressMsg) (TreeModel, tea.Cmd) {
 		if m.Cursor < len(m.allNodes)-1 {
 			m.Cursor++
 		}
+	case "pgdown", "space", "f":
+		m.Cursor += m.viewport.Height()
+		if m.Cursor >= len(m.allNodes) {
+			m.Cursor = len(m.allNodes) - 1
+		}
+	case "pgup", "b":
+		m.Cursor -= m.viewport.Height()
+		if m.Cursor < 0 {
+			m.Cursor = 0
+		}
 	case "left", "h":
 		if len(m.allNodes) > 0 {
 			node := m.allNodes[m.Cursor]
@@ -134,11 +144,19 @@ func (m *TreeModel) updateScrollY() {
 	cursorLine := m.lineNumberOfCursor()
 	height := m.viewport.Height()
 
+	// When the cursor node is expanded with visible children, also keep its
+	// first child in view so newly revealed content is not hidden behind the
+	// footer when the cursor sits on the last body row.
+	bottom := cursorLine
+	if n := m.allNodes[m.Cursor]; !n.Collapsed && !n.Leaf() {
+		bottom = cursorLine + 1
+	}
+
 	yOff := m.scrollY
 	if cursorLine < yOff {
 		yOff = cursorLine
-	} else if cursorLine >= yOff+height {
-		yOff = cursorLine - height + 1
+	} else if bottom >= yOff+height {
+		yOff = bottom - height + 1
 	}
 	maxYOff := totalLines - height
 	if maxYOff < 0 {
@@ -150,6 +168,15 @@ func (m *TreeModel) updateScrollY() {
 	if yOff < 0 {
 		yOff = 0
 	}
+
+	// When the cursor is on the very last node, anchor to the document bottom
+	// so any trailing lines (e.g. closing brackets) stay visible instead of
+	// being permanently hidden behind the footer (the cursor cannot move past
+	// the last node to scroll them into view).
+	if m.Cursor == len(m.allNodes)-1 && maxYOff <= cursorLine {
+		yOff = maxYOff
+	}
+
 	m.scrollY = yOff
 }
 

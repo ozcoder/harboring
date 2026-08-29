@@ -188,7 +188,7 @@ func (m OptionsModel) buildScrollbar(total, visible, offset int) []string {
 	maxScroll := total - visible
 	barPos := 1
 	if maxScroll > 0 {
-		barPos = 1 + (offset * (scrollbarHeight - 2)) / maxScroll
+		barPos = 1 + (offset*(scrollbarHeight-2))/maxScroll
 	}
 	if barPos > scrollbarHeight-2 {
 		barPos = scrollbarHeight - 2

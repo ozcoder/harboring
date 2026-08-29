@@ -32,7 +32,7 @@ func shrinkWalk(n *Node, inContent bool) {
 }
 
 func ShrinkFile(inputPath, outputPath string) error {
-	data, err := os.ReadFile(inputPath)
+	data, err := ReadFileLimited(inputPath)
 	if err != nil {
 		return fmt.Errorf("read input: %w", err)
 	}
@@ -57,7 +57,11 @@ func ShrinkFile(inputPath, outputPath string) error {
 }
 
 func MinifyJSON(data []byte) ([]byte, error) {
-	raw, err := decodeOrdered(data)
+	dec, err := Decompress(data)
+	if err != nil {
+		return nil, err
+	}
+	raw, err := decodeOrdered(dec)
 	if err != nil {
 		return nil, fmt.Errorf("parse json: %w", err)
 	}
@@ -65,7 +69,11 @@ func MinifyJSON(data []byte) ([]byte, error) {
 }
 
 func ExpandJSON(data []byte) ([]byte, error) {
-	raw, err := decodeOrdered(data)
+	dec, err := Decompress(data)
+	if err != nil {
+		return nil, err
+	}
+	raw, err := decodeOrdered(dec)
 	if err != nil {
 		return nil, fmt.Errorf("parse json: %w", err)
 	}
@@ -82,7 +90,7 @@ func ExpandJSON(data []byte) ([]byte, error) {
 }
 
 func MinifyFile(inputPath, outputPath string) error {
-	data, err := os.ReadFile(inputPath)
+	data, err := ReadFileLimited(inputPath)
 	if err != nil {
 		return fmt.Errorf("read input: %w", err)
 	}
@@ -92,15 +100,15 @@ func MinifyFile(inputPath, outputPath string) error {
 		return fmt.Errorf("minify: %w", err)
 	}
 
-	if err := os.WriteFile(outputPath, output, 0644); err != nil {
-		return fmt.Errorf("write output: %w", err)
+	if err := WriteFileAuto(outputPath, output); err != nil {
+		return err
 	}
 
 	return nil
 }
 
 func ExpandFile(inputPath, outputPath string) error {
-	data, err := os.ReadFile(inputPath)
+	data, err := ReadFileLimited(inputPath)
 	if err != nil {
 		return fmt.Errorf("read input: %w", err)
 	}
@@ -110,8 +118,8 @@ func ExpandFile(inputPath, outputPath string) error {
 		return fmt.Errorf("expand: %w", err)
 	}
 
-	if err := os.WriteFile(outputPath, output, 0644); err != nil {
-		return fmt.Errorf("write output: %w", err)
+	if err := WriteFileAuto(outputPath, output); err != nil {
+		return err
 	}
 
 	return nil

@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"strconv"
 )
 
 type jsonType int
@@ -18,6 +17,11 @@ const (
 	jsonArray
 	jsonObject
 )
+
+// maxParseDepth caps the recursion of the JSON decoder. Real HAR files nest
+// only a handful of levels deep; an unbounded depth lets a malicious file
+// trigger a goroutine stack overflow (panic / crash).
+const maxParseDepth = 10000
 
 type orderedValue struct {
 	typ     jsonType
@@ -32,7 +36,7 @@ type orderedValue struct {
 func decodeOrdered(data []byte) (*orderedValue, error) {
 	dec := json.NewDecoder(bytes.NewReader(data))
 	dec.UseNumber()
-	v, err := decodeOrderedFromDecoder(dec)
+	v, err := decodeOrderedFromDecoder(dec, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -43,7 +47,10 @@ func decodeOrdered(data []byte) (*orderedValue, error) {
 	return v, nil
 }
 
-func decodeOrderedFromDecoder(dec *json.Decoder) (*orderedValue, error) {
+func decodeOrderedFromDecoder(dec *json.Decoder, depth int) (*orderedValue, error) {
+	if depth > maxParseDepth {
+		return nil, fmt.Errorf("input nested too deeply (max depth %d)", maxParseDepth)
+	}
 	t, err := dec.Token()
 	if err != nil {
 		return nil, fmt.Errorf("read token: %w", err)
@@ -63,7 +70,7 @@ func decodeOrderedFromDecoder(dec *json.Decoder) (*orderedValue, error) {
 				if !ok {
 					return nil, fmt.Errorf("expected string key, got %T", kt)
 				}
-				child, err := decodeOrderedFromDecoder(dec)
+				child, err := decodeOrderedFromDecoder(dec, depth+1)
 				if err != nil {
 					return nil, fmt.Errorf("read object value for key %q: %w", key, err)
 				}
@@ -79,7 +86,7 @@ func decodeOrderedFromDecoder(dec *json.Decoder) (*orderedValue, error) {
 		case '[':
 			v := &orderedValue{typ: jsonArray}
 			for dec.More() {
-				child, err := decodeOrderedFromDecoder(dec)
+				child, err := decodeOrderedFromDecoder(dec, depth+1)
 				if err != nil {
 					return nil, fmt.Errorf("read array element: %w", err)
 				}
@@ -217,7 +224,7 @@ func nodeToOrdered(n *Node) *orderedValue {
 		return &orderedValue{typ: jsonString, strVal: n.Value.(string)}
 
 	case Number:
-		return &orderedValue{typ: jsonNumber, numStr: strconv.FormatFloat(n.Value.(float64), 'f', -1, 64)}
+		return &orderedValue{typ: jsonNumber, numStr: n.NumberText()}
 
 	case Bool:
 		return &orderedValue{typ: jsonBool, boolVal: n.Value.(bool)}

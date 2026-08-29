@@ -3,31 +3,31 @@ package tui
 import "charm.land/bubbles/v2/key"
 
 type KeyMap struct {
-	Up            key.Binding
-	Down          key.Binding
-	Left          key.Binding
-	Right         key.Binding
-	Enter         key.Binding
-	Escape        key.Binding
-	Quit          key.Binding
-	TreeMode      key.Binding
-	RequestsMode  key.Binding
-	WaterfallMode key.Binding
-	Search        key.Binding
-	Scrub         key.Binding
-	Save          key.Binding
-	SaveAs        key.Binding
-	ToggleTheme   key.Binding
-	Edit          key.Binding
-	ExpandAll     key.Binding
-	CollapseAll   key.Binding
-	Filter        key.Binding
-	ColumnPicker  key.Binding
-	ZoomIn        key.Binding
-	ZoomOut       key.Binding
-	Next          key.Binding
-	Prev          key.Binding
-	Options       key.Binding
+	Up           key.Binding
+	Down         key.Binding
+	Left         key.Binding
+	Right        key.Binding
+	Enter        key.Binding
+	Escape       key.Binding
+	Quit         key.Binding
+	TreeMode     key.Binding
+	RequestsMode key.Binding
+	TimingsMode  key.Binding
+	Search       key.Binding
+	Scrub        key.Binding
+	Save         key.Binding
+	SaveAs       key.Binding
+	ToggleTheme  key.Binding
+	Edit         key.Binding
+	ExpandAll    key.Binding
+	CollapseAll  key.Binding
+	Filter       key.Binding
+	ColumnPicker key.Binding
+	ZoomIn       key.Binding
+	ZoomOut      key.Binding
+	Next         key.Binding
+	Prev         key.Binding
+	Options      key.Binding
 }
 
 func DefaultKeyMap() *KeyMap {
@@ -68,9 +68,9 @@ func DefaultKeyMap() *KeyMap {
 			key.WithKeys("2"),
 			key.WithHelp("2", "requests"),
 		),
-		WaterfallMode: key.NewBinding(
+		TimingsMode: key.NewBinding(
 			key.WithKeys("3"),
-			key.WithHelp("3", "waterfall"),
+			key.WithHelp("3", "timings"),
 		),
 		Search: key.NewBinding(
 			key.WithKeys("/"),
@@ -136,13 +136,13 @@ func DefaultKeyMap() *KeyMap {
 }
 
 func (k *KeyMap) ShortHelp() []key.Binding {
-	return []key.Binding{k.Quit, k.Search, k.Options, k.TreeMode, k.RequestsMode, k.WaterfallMode}
+	return []key.Binding{k.Quit, k.Search, k.Options, k.TreeMode, k.RequestsMode, k.TimingsMode}
 }
 
 func (k *KeyMap) FullHelp() []key.Binding {
 	return []key.Binding{
 		k.Quit, k.Search, k.Scrub, k.Save, k.SaveAs, k.ToggleTheme, k.Options,
-		k.TreeMode, k.RequestsMode, k.WaterfallMode,
+		k.TreeMode, k.RequestsMode, k.TimingsMode,
 		k.Up, k.Down, k.Left, k.Right, k.Enter, k.Escape,
 		k.Edit, k.ExpandAll, k.CollapseAll, k.Filter, k.ColumnPicker,
 		k.ZoomIn, k.ZoomOut, k.Next, k.Prev,

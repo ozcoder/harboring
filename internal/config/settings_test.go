@@ -54,7 +54,7 @@ func TestSaveAndLoad(t *testing.T) {
 		Theme:       "light",
 		Truecolor:   false,
 		GraphSymbol: "braille",
-		DefaultMode: "waterfall",
+		DefaultMode: "timings",
 		CompactMode: true,
 	}
 
@@ -85,8 +85,8 @@ func TestSaveAndLoad(t *testing.T) {
 	if loaded.GraphSymbol != "braille" {
 		t.Errorf("expected graph_symbol 'braille', got %q", loaded.GraphSymbol)
 	}
-	if loaded.DefaultMode != "waterfall" {
-		t.Errorf("expected default_mode 'waterfall', got %q", loaded.DefaultMode)
+	if loaded.DefaultMode != "timings" {
+		t.Errorf("expected default_mode 'timings', got %q", loaded.DefaultMode)
 	}
 	if !loaded.CompactMode {
 		t.Error("expected compact_mode true")

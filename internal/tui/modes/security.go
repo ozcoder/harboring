@@ -38,26 +38,24 @@ type SecurityResult struct {
 }
 
 type SecurityModel struct {
-	entries    []*har.EntryDetails
-	rawEntries []*har.Node
-	theme      *theme.Engine
-	results    []SecurityResult
-	width      int
-	height     int
-	cursor     int
-	scrollY    int
-	viewport   viewport.Model
+	entries  []*har.EntryDetails
+	theme    *theme.Engine
+	results  []SecurityResult
+	width    int
+	height   int
+	cursor   int
+	scrollY  int
+	viewport viewport.Model
 }
 
-func NewSecurityModel(entries []*har.EntryDetails, rawEntries []*har.Node, th *theme.Engine) SecurityModel {
+func NewSecurityModel(entries []*har.EntryDetails, th *theme.Engine) SecurityModel {
 	vp := viewport.New(viewport.WithWidth(80), viewport.WithHeight(20))
 	m := SecurityModel{
-		entries:    entries,
-		rawEntries: rawEntries,
-		theme:      th,
-		width:      80,
-		height:     20,
-		viewport:   vp,
+		entries:  entries,
+		theme:    th,
+		width:    80,
+		height:   20,
+		viewport: vp,
 	}
 	m.compute()
 	return m
@@ -79,26 +77,11 @@ func (m *SecurityModel) compute() {
 		}
 
 		for _, e := range entries {
-			// Find the corresponding raw entry index
-			var rawIdx int
-			for i, re := range m.rawEntries {
-				if findChild(re, "request") != nil {
-					urlChild := findChild(findChild(re, "request"), "url")
-					if urlChild != nil && urlChild.Kind == har.String && urlChild.Value.(string) == e.URL {
-						rawIdx = i
-						break
-					}
-				}
-			}
-
-			if rawIdx < len(m.rawEntries) {
-				headers := getResponseHeaders(m.rawEntries[rawIdx])
-				for name := range headers {
-					lowerName := strings.ToLower(name)
-					for _, sh := range securityHeaders {
-						if lowerName == sh.Name {
-							present[sh.Name] = true
-						}
+			for _, hdr := range e.ResponseHeaders {
+				lower := strings.ToLower(hdr.Name)
+				for _, sh := range securityHeaders {
+					if lower == sh.Name {
+						present[sh.Name] = true
 					}
 				}
 			}
@@ -138,48 +121,6 @@ func (m *SecurityModel) compute() {
 	if m.cursor < 0 {
 		m.cursor = 0
 	}
-}
-
-func getResponseHeaders(node *har.Node) map[string]string {
-	if node == nil {
-		return nil
-	}
-	response := findChild(node, "response")
-	if response == nil {
-		return nil
-	}
-	headersNode := findChild(response, "headers")
-	if headersNode == nil {
-		return nil
-	}
-	headers := make(map[string]string)
-	for _, child := range headersNode.Children {
-		if child.Kind == har.Object {
-			name := getStringChild(child, "name")
-			value := getStringChild(child, "value")
-			if name != "" {
-				headers[name] = value
-			}
-		}
-	}
-	return headers
-}
-
-func findChild(parent *har.Node, key string) *har.Node {
-	for _, child := range parent.Children {
-		if child.Key == key {
-			return child
-		}
-	}
-	return nil
-}
-
-func getStringChild(parent *har.Node, key string) string {
-	child := findChild(parent, key)
-	if child != nil && child.Kind == har.String {
-		return child.Value.(string)
-	}
-	return ""
 }
 
 func (m *SecurityModel) SetViewportSize(w, h int) {
@@ -294,8 +235,8 @@ func (m SecurityModel) View() string {
 
 	for i, r := range m.results {
 		domainDisplay := r.Domain
-		if len(domainDisplay) > 28 {
-			domainDisplay = domainDisplay[:25] + "..."
+		if lipgloss.Width(domainDisplay) > 28 {
+			domainDisplay = truncateWidth(domainDisplay, 28)
 		}
 
 		reqStr := fmt.Sprintf("%d missing", r.MissingRequired)
@@ -306,7 +247,7 @@ func (m SecurityModel) View() string {
 
 		if isSelected {
 			domainStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color(m.theme.GetBg())).
+				Background(lipgloss.Color(m.theme.GetSelectionBg())).
 				Foreground(lipgloss.Color(m.theme.GetFg()))
 			reqStyle = domainStyle
 			optStyle = domainStyle
@@ -399,11 +340,24 @@ func RenderSecurityDetail(result SecurityResult, th *theme.Engine, width int) st
 			status = "○ Missing (Optional)"
 			style = missingOptionalStyle
 		}
-		headerName := strings.Title(strings.ReplaceAll(sh.Name, "-", "-"))
+		headerName := titleHeader(sh.Name)
 		lines = append(lines, fmt.Sprintf("  %-40s %s", headerName+":", style.Render(status)))
 		lines = append(lines, fmt.Sprintf("     %s", dimStyle.Render(sh.Description)))
 		lines = append(lines, "")
 	}
 
 	return strings.Join(lines, "\n")
+}
+
+// titleHeader capitalises the first letter of each dash-separated segment,
+// e.g. "cross-origin-opener-policy" -> "Cross-Origin-Opener-Policy".
+func titleHeader(name string) string {
+	parts := strings.Split(name, "-")
+	for i, p := range parts {
+		if p == "" {
+			continue
+		}
+		parts[i] = strings.ToUpper(p[:1]) + p[1:]
+	}
+	return strings.Join(parts, "-")
 }

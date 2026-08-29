@@ -51,6 +51,33 @@ func TestRequestsIconKeepsColumnsAligned(t *testing.T) {
 	t.Logf("base: %q\nicon: %q", base, icon)
 }
 
+func TestRequestsSelectedRowHighlightCoversFullRow(t *testing.T) {
+	th := theme.New()
+	entries := []*har.EntryDetails{
+		{Method: "GET", URL: "http://a/1.png", URLPath: "/1.png", ResourceType: "image", Status: 200, Size: 10, Time: 1},
+		{Method: "GET", URL: "http://a/2.js", URLPath: "/2.js", ResourceType: "script", Status: 200, Size: 10, Time: 1},
+	}
+	m := NewRequestsModel(entries, []*har.Node{nil, nil}, th)
+	m.SetViewportSize(120, 30)
+
+	view := m.View()
+	// The selected row must carry the highlight background, not just the number column.
+	if !strings.Contains(view, "48;2;") {
+		t.Fatalf("expected a background highlight on the selected row, got:\n%s", view)
+	}
+
+	lines := strings.Split(strings.TrimSuffix(stripANSI(view), "\n"), "\n")
+	// line 0 = filter bar, line 1 = header, line 2 = separator, line 3 = selected row.
+	sel := lines[3]
+	if got := utf8.RuneCountInString(sel); got != m.width {
+		t.Fatalf("selected row width = %d, want %d (full row)\n%q", got, m.width, sel)
+	}
+	unsel := lines[4]
+	if got := utf8.RuneCountInString(unsel); got >= m.width {
+		t.Fatalf("non-selected row should not span the full width, got %d\n%q", got, unsel)
+	}
+}
+
 func TestRequestsFilterBarRendered(t *testing.T) {
 	th := theme.New()
 	entries := []*har.EntryDetails{

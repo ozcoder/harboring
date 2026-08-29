@@ -2,11 +2,9 @@ package har
 
 import (
 	"bytes"
-	"compress/gzip"
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 )
@@ -31,6 +29,7 @@ type EntryDetails struct {
 	Send       float64
 	Wait       float64
 	Receive    float64
+	Blocked    float64
 
 	ContentEncoding    string
 	MimeType           string
@@ -57,33 +56,17 @@ type EntryDetails struct {
 }
 
 func ParseFile(path string) (*Node, error) {
-	data, err := os.ReadFile(path)
+	data, err := ReadFileLimited(path)
 	if err != nil {
-		return nil, fmt.Errorf("read file: %w", err)
+		return nil, err
 	}
 
-	if len(data) >= 2 && data[0] == 0x1f && data[1] == 0x8b {
-		reader, err := gzip.NewReader(bytes.NewReader(data))
-		if err != nil {
-			return nil, fmt.Errorf("gzip reader: %w", err)
-		}
-		defer reader.Close()
-		decompressed, err := os.CreateTemp("", "har-decompress-*")
-		if err != nil {
-			return nil, fmt.Errorf("create temp: %w", err)
-		}
-		defer os.Remove(decompressed.Name())
-		defer decompressed.Close()
-		if _, err := decompressed.ReadFrom(reader); err != nil {
-			return nil, fmt.Errorf("decompress: %w", err)
-		}
-		data, err = os.ReadFile(decompressed.Name())
-		if err != nil {
-			return nil, fmt.Errorf("read decompressed: %w", err)
-		}
+	decompressed, err := Decompress(data)
+	if err != nil {
+		return nil, err
 	}
 
-	return ParseBytes(data)
+	return ParseBytes(decompressed)
 }
 
 func ParseBytes(data []byte) (*Node, error) {
@@ -95,6 +78,9 @@ func ParseBytes(data []byte) (*Node, error) {
 }
 
 func buildTreeFromOrdered(v *orderedValue, key string, depth int, parent *Node) *Node {
+	if depth > maxParseDepth {
+		return &Node{Key: key, Parent: parent, Kind: Null, Depth: depth}
+	}
 	n := &Node{
 		Key:    key,
 		Parent: parent,
@@ -128,6 +114,7 @@ func buildTreeFromOrdered(v *orderedValue, key string, depth int, parent *Node) 
 	case jsonNumber:
 		n.Kind = Number
 		n.Value = mustParseFloat(v.numStr)
+		n.NumStr = v.numStr
 		n.IsKnown = IsKnownField(parentKey(parent), key)
 
 	case jsonBool:
@@ -317,6 +304,7 @@ func GetEntryDetails(entry *Node) *EntryDetails {
 		d.Send = getTiming(timingsNode, "send")
 		d.Wait = getTiming(timingsNode, "wait")
 		d.Receive = getTiming(timingsNode, "receive")
+		d.Blocked = getTiming(timingsNode, "blocked")
 	}
 
 	d.IsCompressed = d.ContentEncoding != ""

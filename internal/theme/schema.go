@@ -12,8 +12,9 @@ type MetaConfig struct {
 }
 
 type StyleDef struct {
-	Fg     string `toml:"fg"`
-	Bg     string `toml:"bg"`
-	Bold   bool   `toml:"bold"`
-	Italic bool   `toml:"italic"`
+	Fg       string `toml:"fg"`
+	Bg       string `toml:"bg"`
+	Bold     bool   `toml:"bold"`
+	Italic   bool   `toml:"italic"`
+	Underline bool   `toml:"underline"`
 }

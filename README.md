@@ -2,21 +2,24 @@
 
 **H**ttp **AR**chive **B**... **O**... **R**eader **I**n **G**o — a terminal UI for inspecting HAR files.
 
+What information is your HAR file harboring?
+
 Built with [Bubble Tea](https://github.com/charmbracelet/bubbletea) and [Lip Gloss](https://github.com/charmbracelet/lipgloss).
 
 ## Features
 
 - **Tree view** — full HAR file as a collapsible, colourised JSON tree
 - **Request list** — tabular view with colour-coded methods and status codes, resource-type filtering (`f`) and sortable columns
-- **Waterfall chart** — horizontal timing bars with configurable columns (DNS, Connect, SSL, Send, Wait, Receive) and zoom (`+`/`-`)
+- **Timings chart** — horizontal timing bars with configurable columns (DNS, Connect, SSL, Send, Wait, Receive) and a resizable bar graph area with horizontal scrolling (`+`/`-`, `←`/`→`)
+- **Timeline view** — all requests plotted on one shared time axis by start time, revealing parallel vs. serialised loading and queueing/blocking
 - **Summary view** — aggregate overview: request counts, total size/time, and method/status breakdowns
 - **Cache analysis** — per-entry cache-header analysis (max-age, ETag, no-store, etc.) with warnings
 - **Security headers** — required/optional security header presence per domain, with detail popovers
 - **Search** — full-text search across all HAR fields with next/previous navigation
 - **Detail popover** — per-request breakdown with timing bars **and the full request and response headers**
 - **Content scrubbing** — strip response bodies for safe sharing
-- **Gzip support** — reads `.har.gz` files transparently
-- **Theme engine** — dark/light built-in themes, custom themes via TOML
+- **Compression support** — reads and writes `.har.gz` (gzip) and `.har.bz2` (bzip2) files transparently, detected by magic bytes or file extension
+- **Theme engine** — dark/light/spectrum/turbo built-in themes, custom themes via TOML
 
 ## Installation
 
@@ -37,17 +40,24 @@ go build -o harboring ./cmd/harboring/
 ## Usage
 
 ```
-harboring <file.har>              Open TUI viewer
-harboring view <file.har>         Open TUI viewer
-harboring dump <file.har>         Dump formatted JSON to stdout
-harboring scrub <file.har> [-o]   Scrub content sections
-harboring shrink <file.har> [-o]  Minify JSON (remove whitespace)
-harboring expand <file.har> [-o]  Pretty-print JSON
-harboring stats <file.har>        Show summary statistics
-harboring perf <file.har>         Generate performance report
-harboring validate <file.har>     Validate HAR structure
+harboring <file.har>              Open TUI viewer (default)
+harboring --view <file.har>       Open TUI viewer
+harboring --dump <file.har>       Dump formatted JSON to stdout
+harboring --scrub <file.har>      Scrub content sections
+harboring --shrink <file.har>     Minify JSON (remove whitespace)
+harboring --expand <file.har>     Pretty-print JSON
+harboring --stats <file.har>      Show summary statistics
+harboring --perf <file.har>       Generate performance report
+harboring --cache <file.har>      Show cache summary
+harboring --security <file.har>   Show security headers analysis
+harboring --trackers <file.har>   Show third-party tracker analysis
+harboring --fields <fields> <file.har>  Output HAR with only the specified fields
+harboring --diff <left.har> <right.har> Compare two HAR files side by side
+harboring --validate <file.har>   Validate HAR structure
+harboring --list themes           List available built-in themes
+harboring --list trackers         List known tracker domains
 harboring --version               Show version
-harboring help                    Show this help
+harboring --help                  Show this help
 ```
 
 ### CLI Examples
@@ -57,37 +67,132 @@ harboring help                    Show this help
 harboring recording.har
 
 # Dump formatted JSON
-harboring dump recording.har > pretty.json
+harboring --dump recording.har > pretty.json
 
 # Scrub response bodies into a new file
-harboring scrub recording.har -o scrubbed.har
+harboring --scrub recording.har -o scrubbed.har
 
 # Quick stats
-harboring stats recording.har
+harboring --stats recording.har
 
 # Validate structure
-harboring validate recording.har
+harboring --validate recording.har
 
 # Minify / pretty-print JSON
-harboring shrink recording.har -o min.har
-harboring expand recording.har -o pretty.har
+harboring --shrink recording.har -o min.har
+harboring --expand recording.har -o pretty.har
 
 # Performance report (TTFB percentiles, by type/domain, slowest/largest)
-harboring perf recording.har
+harboring --perf recording.har
+
+# Cache summary (good / short / no-cache / over-cached breakdown)
+harboring --cache recording.har
+
+# Security headers analysis (per-domain required/optional headers)
+harboring --security recording.har
+
+# Third-party tracker analysis
+harboring --trackers recording.har
+
+# Show only certain fields as a new HAR
+harboring --fields request.url,timings.wait recording.har -o slim.har
+
+# Compare two HAR files side by side in the TUI
+harboring --diff left.har right.har
+
+# List available themes / known trackers
+harboring --list themes
+harboring --list trackers
+
+# Add custom tracker domains for a tracker run
+harboring --trackers recording.har --trackers-file trackers.toml
 
 # Show version
 harboring --version
+```
+
+### Markdown reports
+
+`--stats`, `--perf`, `--cache`, and `--security` print plain text by default.
+Pass `--markdown` (or `-m`) to emit a clean GitHub-flavored Markdown version
+instead — handy for pasting into issues, wikis, or PR descriptions:
+
+```bash
+harboring --perf recording.har --markdown > perf.md
+harboring --cache recording.har -m
+harboring --security recording.har --markdown | tee security.md
 ```
 
 ### Flags
 
 | Flag                     | Description                                                 |
 | ------------------------ | ----------------------------------------------------------- |
-| `--theme <name\|path>`   | Override theme (`dark`, `light`, or path to TOML file)      |
-| `--scrub`                | Scrub content sections (for `view`/`dump`)                  |
-| `--shrink`               | Remove whitespace when dumping (for `view`/`dump`)          |
-| `--version`              | Print the harboring version and exit                        |
-| `-o <file>`              | Output file (for `scrub`/`shrink`/`expand` commands)        |
+| `--view`                 | Open the TUI viewer (default when no mode is given)         |
+| `--dump`                 | Dump formatted JSON to stdout                               |
+| `--scrub`                | Scrub content sections                                      |
+| `--shrink`               | Minify JSON (remove whitespace)                             |
+| `--expand`               | Pretty-print JSON                                           |
+| `--stats`                | Show summary statistics                                     |
+| `--perf`                 | Generate performance report                                 |
+| `--cache`                | Show cache summary                                          |
+| `--security`             | Show security headers analysis                              |
+| `--validate`             | Validate HAR structure                                      |
+| `--theme <name\|path>`   | Override theme (`dark`, `light`, `spectrum`, `turbo`, or path to TOML file) |
+| `--list <themes\|trackers>` | List built-in themes or known tracker domains and exit      |
+| `--trackers-file <path>` | Load additional tracker domains from a TOML file (used with `--trackers`) |
+| `--markdown`, `-m`       | Render `stats`/`perf`/`cache`/`security` reports as Markdown                |
+| `--version`, `-v`        | Print the harboring version and exit                        |
+| `--help`, `-h`           | Print help and exit                                         |
+| `-o <file>`              | Output file (for `--scrub`/`--shrink`/`--expand`)           |
+
+At most one mode flag (`--view` … `--validate`) may be given; combine
+transformations by piping, e.g. `harboring --scrub in.har | harboring --shrink`.
+
+### Custom tracker lists
+
+`harboring --trackers file.har --trackers-file trackers.toml` augments the
+built-in tracker list with your own domains for that run. The file is TOML with
+an optional `category` (defaults to `other`):
+
+```toml
+[[trackers]]
+domain = "pixel.company.example"
+category = "analytics"
+
+[[trackers]]
+domain = "ads.company.example"
+```
+
+`harboring --list trackers` prints the resulting known domains grouped by
+category; `harboring --list themes` prints the available themes.
+
+### Pipelines
+
+The non-interactive modes (`--dump`, `--scrub`, `--shrink`, `--expand`,
+`--stats`, `--perf`, `--validate`) accept input from a file path, an explicit
+`-` for stdin, or piped input with no argument. They write to stdout unless
+`-o` is given, so they compose naturally in a shell pipeline. Compressed
+streams (`.gz`/`.bz2`) are detected by their magic bytes, so you can pipe
+compressed data directly.
+
+```bash
+# Scrub a compressed HAR and count the lines of output
+cat large.har.bz2 | harboring --scrub | wc -l
+
+# Generate a performance report from a gzipped HAR into a file
+cat large.har.gz | harboring --perf > large.perf.txt
+
+# Validate a stream and check the result
+cat recording.har | harboring --validate
+
+# Explicit stdin marker
+harboring --stats - < recording.har
+
+# Chain transforms: scrub, then minify to a file
+cat recording.har.gz | harboring --scrub | harboring --shrink -o clean.har
+```
+
+The TUI viewer (`--view`) requires a file path and does not read from stdin.
 
 ## Configuration
 
@@ -104,7 +209,7 @@ The file holds the persisted preferences:
 theme = "dark"
 truecolor = true
 graph_symbol = "block"      # block | braille | ascii
-default_mode = "tree"       # tree | requests | waterfall | summary | cache
+default_mode = "tree"       # tree | requests | timings | summary | cache
 compact_mode = false
 ```
 
@@ -114,11 +219,11 @@ compact_mode = false
 
 | Key                               | Action                                                                |
 | --------------------------------- | --------------------------------------------------------------------- |
-| `1` / `2` / `3` / `4` / `5` / `6` | Switch to Tree / Requests / Waterfall / Summary / Cache / Security    |
+| `1` / `2` / `3` / `4` / `5` / `6` / `7` | Switch to Tree / Requests / Timings / Summary / Cache / Security / Timeline |
 | `/`                               | Open search                                                           |
 | `?`                               | Show help                                                             |
 | `o`                               | Open options                                                          |
-| `t`                               | Toggle dark/light theme                                               |
+| `t`                               | Cycle through themes (dark / light / spectrum / turbo)                |
 | `s`                               | Scrub content sections (or cycle sort in Requests mode)               |
 | `Ctrl+S`                          | Save file                                                             |
 | `q` / `Ctrl+C`                    | Quit                                                                  |
@@ -146,7 +251,7 @@ compact_mode = false
 | `s`                    | Cycle sort: Size / Time / URL     |
 | `S`                    | Toggle sort direction             |
 
-### Waterfall Mode
+### Timings Mode
 
 | Key                    | Action                      |
 | ---------------------- | --------------------------- |
@@ -155,13 +260,26 @@ compact_mode = false
 | `PgUp` / `b`           | Page up                     |
 | `g` / `G`              | First / last entry          |
 | `Enter`                | Open timing detail popover  |
-| `+` / `-`              | Zoom chart in / out         |
+| `+` / `-`              | Widen / narrow the bar graph area (a horizontal scrollbar appears when it exceeds the screen) |
+| `→` / `←` or `l` / `h` | Scroll the bar graph area horizontally |
 
 ### Summary Mode
 
 | Key                | Action         |
 | ------------------ | -------------- |
 | ↑ / ↓ or `j` / `k` | Scroll content |
+
+### Timeline Mode
+
+| Key                       | Action                     |
+| ------------------------- | -------------------------- |
+| ↑ / ↓ or `j` / `k`        | Move down / up             |
+| `PgDn` / `Space` / `f`    | Page down                  |
+| `PgUp` / `b`              | Page up                    |
+| `g` / `G`                 | First / last entry         |
+| `Enter`                   | Open detail popover        |
+| `+` / `-`                 | Widen / narrow the timeline area (a horizontal scrollbar appears when it exceeds the screen) |
+| `→` / `←` or `l` / `h`    | Scroll the timeline area horizontally |
 
 ### Cache Mode
 
@@ -199,7 +317,7 @@ compact_mode = false
 
 ## Themes
 
-Harboring ships with two built-in themes (Catppuccin Mocha and Catppuccin Latte). Toggle between them with `t` in the TUI, or pass `--theme dark` / `--theme light` on the command line.
+Harboring ships with four built-in themes: **Dark**, **Light**, **Spectrum** (a retro ZX Spectrum palette), and **Turbo** (a Borland Turbo Pascal IDE palette). Cycle through them with `t` in the TUI, or pass `--theme dark` / `--theme light` / `--theme spectrum` / `--theme turbo` on the command line.
 
 ### Custom Themes
 
@@ -234,8 +352,8 @@ cmd/harboring/           CLI entry point
 internal/
   har/                   Custom HAR parser (no external HAR libraries)
   tui/                   Bubble Tea TUI
-    modes/               Tree, requests, waterfall, summary, cache, security views
-  theme/                 Theme engine (TOML loading, dark/light)
+    modes/               Tree, requests, timings, summary, cache, security views
+  theme/                 Theme engine (TOML loading, dark/light/spectrum)
   filter/                Method/status/URL filtering
 themes/                  Built-in theme TOML files
 ```

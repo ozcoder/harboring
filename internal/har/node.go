@@ -1,5 +1,7 @@
 package har
 
+import "strconv"
+
 type NodeKind int
 
 const (
@@ -14,6 +16,7 @@ const (
 type Node struct {
 	Key       string
 	Value     interface{}
+	NumStr    string // original JSON number literal, preserved verbatim
 	Kind      NodeKind
 	Children  []*Node
 	Collapsed bool
@@ -24,6 +27,16 @@ type Node struct {
 
 func (n *Node) Leaf() bool {
 	return len(n.Children) == 0
+}
+
+// NumberText returns the original JSON number literal for Number nodes. Nodes
+// built from the ordered decoder carry the verbatim literal (NumStr); nodes
+// constructed in code fall back to formatting the float64 value.
+func (n *Node) NumberText() string {
+	if n.NumStr != "" {
+		return n.NumStr
+	}
+	return strconv.FormatFloat(n.Value.(float64), 'f', -1, 64)
 }
 
 func (n *Node) ToggleCollapse() {

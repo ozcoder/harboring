@@ -20,24 +20,24 @@ const (
 )
 
 type CacheModel struct {
-	entries     []*har.EntryDetails
-	rawEntries  []*har.Node
-	theme       *theme.Engine
-	width       int
-	height      int
-	noCache     []*har.EntryDetails
-	shortCache  []*har.EntryDetails
-	goodCache   []*har.EntryDetails
-	overCache   []*har.EntryDetails
-	noCacheIdx  []int
-	shortIdx    []int
-	goodIdx     []int
-	overIdx     []int
-	verdicts    map[int]har.CacheVerdict
+	entries      []*har.EntryDetails
+	rawEntries   []*har.Node
+	theme        *theme.Engine
+	width        int
+	height       int
+	noCache      []*har.EntryDetails
+	shortCache   []*har.EntryDetails
+	goodCache    []*har.EntryDetails
+	overCache    []*har.EntryDetails
+	noCacheIdx   []int
+	shortIdx     []int
+	goodIdx      []int
+	overIdx      []int
+	verdicts     map[int]har.CacheVerdict
 	descriptions map[int]string
-	active      CacheSection
-	scrollPos   map[CacheSection]int
-	selection   map[CacheSection]int
+	active       CacheSection
+	scrollPos    map[CacheSection]int
+	selection    map[CacheSection]int
 }
 
 func NewCacheModel(entries []*har.EntryDetails, rawEntries []*har.Node, th *theme.Engine) CacheModel {
@@ -195,6 +195,25 @@ func (m CacheModel) handleKey(msg tea.KeyPressMsg) (CacheModel, tea.Cmd) {
 			if sel >= 0 {
 				m.selection[m.active] = sel
 			}
+			m.ensureSelectionVisible()
+		}
+	case "pgdown", "space", "f":
+		if m.isScrollableSection() {
+			entries := m.sectionEntries(m.active)
+			sel := m.selection[m.active] + m.visibleLines()
+			if sel >= len(entries) {
+				sel = len(entries) - 1
+			}
+			m.selection[m.active] = sel
+			m.ensureSelectionVisible()
+		}
+	case "pgup", "b":
+		if m.isScrollableSection() {
+			sel := m.selection[m.active] - m.visibleLines()
+			if sel < 0 {
+				sel = 0
+			}
+			m.selection[m.active] = sel
 			m.ensureSelectionVisible()
 		}
 	case "g":
@@ -355,7 +374,7 @@ func (m CacheModel) renderCacheIssues(w, h int, titleStyle, valueStyle, warnStyl
 		line := fmt.Sprintf("%s %s %s %s", sc, e.Method, truncateStr(e.URLPath, 22), cacheInfo)
 		if listIdx == selPos {
 			selStyle := lipgloss.NewStyle().
-				Background(lipgloss.Color(m.theme.GetBg())).
+				Background(lipgloss.Color(m.theme.GetSelectionBg())).
 				Foreground(lipgloss.Color(m.theme.GetWarn()))
 			line = selStyle.Render(line)
 		} else {
@@ -424,7 +443,7 @@ func (m CacheModel) renderGoodCache(w, h int, titleStyle, valueStyle, goodStyle 
 		line := fmt.Sprintf("%s %s %s %s", sc, e.Method, truncateStr(e.URLPath, 22), cacheInfo)
 		if listIdx == selPos {
 			selStyle := lipgloss.NewStyle().
-				Background(lipgloss.Color(m.theme.GetBg())).
+				Background(lipgloss.Color(m.theme.GetSelectionBg())).
 				Foreground(lipgloss.Color(m.theme.GetFg()))
 			line = selStyle.Render(line)
 		} else {
@@ -451,9 +470,9 @@ func (m CacheModel) buildScrollChars(total, start, visible int) []string {
 	maxScroll := total - visible
 	barPos := 1
 	if maxScroll > 0 {
-		barPos = 1 + (start * (scrollbarHeight - 2)) / maxScroll
+		barPos = 1 + (start*(scrollbarHeight-2))/maxScroll
 	}
-	if barPos > scrollbarHeight - 2 {
+	if barPos > scrollbarHeight-2 {
 		barPos = scrollbarHeight - 2
 	}
 
@@ -516,7 +535,7 @@ func (m CacheModel) renderCacheDetails(w, h int, titleStyle, valueStyle, warnSty
 		line := fmt.Sprintf("%s %s %s max-age=%ds", sc, e.Method, truncateStr(e.URLPath, 22), e.MaxAge)
 		if listIdx == selPos {
 			selStyle := lipgloss.NewStyle().
-				Background(lipgloss.Color(m.theme.GetBg())).
+				Background(lipgloss.Color(m.theme.GetSelectionBg())).
 				Foreground(lipgloss.Color(m.theme.GetWarn()))
 			line = selStyle.Render(line)
 		} else {
@@ -540,8 +559,8 @@ func (m CacheModel) buildBox(title string, lines []string, w, h int, active bool
 	boxStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(borderColor).
-		Width(w - 4).
-		Height(h - 2).
+		Width(w-4).
+		Height(h-2).
 		Padding(0, 1)
 
 	return boxStyle.Render(content)
@@ -571,16 +590,31 @@ func joinVertical2(top, bottom string, h int) string {
 	return strings.Join(result, "\n")
 }
 
-func truncateStr(s string, max int) string {
-	if len(s) > max {
-		return s[:max-3] + "..."
+// truncateWidth shortens s to at most max display columns, appending "...".
+// It operates on rune boundaries so multi-byte characters are never split.
+func truncateWidth(s string, max int) string {
+	if max <= 0 {
+		return ""
 	}
-	return s
+	if lipgloss.Width(s) <= max {
+		return s
+	}
+	if max <= 3 {
+		return strings.Repeat(".", max)
+	}
+	var b strings.Builder
+	w := 0
+	for _, r := range s {
+		rw := lipgloss.Width(string(r))
+		if w+rw > max-3 {
+			break
+		}
+		b.WriteRune(r)
+		w += rw
+	}
+	return b.String() + "..."
 }
 
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
+func truncateStr(s string, max int) string {
+	return truncateWidth(s, max)
 }
