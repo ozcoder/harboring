@@ -16,10 +16,12 @@ import (
 type sortField int
 
 const (
-	sortNone sortField = iota
+	sortIndex sortField = iota
+	sortMethod
+	sortURL
+	sortStatus
 	sortSize
 	sortTime
-	sortURL
 )
 
 type RequestsModel struct {
@@ -77,6 +79,8 @@ func NewRequestsModel(entries []*har.EntryDetails, rawEntries []*har.Node, th *t
 		theme:      th,
 		width:      80,
 		height:     20,
+		sortField:  sortIndex,
+		sortAsc:    true,
 	}
 	rm.rebuildFilter()
 	return rm
@@ -162,19 +166,41 @@ func (m *RequestsModel) ToggleTypeAtCursor() {
 }
 
 func (m *RequestsModel) applySort() {
-	if m.sortField == sortNone || len(m.filtered) <= 1 {
-		return
-	}
 	sort.SliceStable(m.filtered, func(i, j int) bool {
-		a, b := m.entries[m.filtered[i]], m.entries[m.filtered[j]]
+		ai := m.filtered[i]
+		aj := m.filtered[j]
+		a, b := m.entries[ai], m.entries[aj]
 		var less bool
 		switch m.sortField {
+		case sortIndex:
+			less = ai < aj
+		case sortMethod:
+			less = strings.ToLower(a.Method) < strings.ToLower(b.Method)
+			if strings.ToLower(a.Method) == strings.ToLower(b.Method) {
+				less = ai < aj
+			}
+		case sortURL:
+			less = strings.ToLower(a.URL) < strings.ToLower(b.URL)
+			if strings.ToLower(a.URL) == strings.ToLower(b.URL) {
+				less = ai < aj
+			}
+		case sortStatus:
+			less = a.Status < b.Status
+			if a.Status == b.Status {
+				less = ai < aj
+			}
 		case sortSize:
 			less = a.Size < b.Size
+			if a.Size == b.Size {
+				less = ai < aj
+			}
 		case sortTime:
 			less = a.Time < b.Time
-		case sortURL:
-			less = a.URL < b.URL
+			if a.Time == b.Time {
+				less = ai < aj
+			}
+		default:
+			less = ai < aj
 		}
 		if m.sortAsc {
 			return less
@@ -184,20 +210,20 @@ func (m *RequestsModel) applySort() {
 }
 
 func (m *RequestsModel) CycleSort() {
-	m.sortField = (m.sortField + 1) % 4
+	m.sortField = (m.sortField + 1) % 6
 	switch m.sortField {
-	case sortNone:
-		m.sortAsc = false
+	case sortIndex:
+		m.sortAsc = true
+	case sortMethod, sortURL, sortStatus:
+		m.sortAsc = true
 	case sortSize, sortTime:
 		m.sortAsc = false
-	case sortURL:
-		m.sortAsc = true
 	}
 	m.applySort()
 }
 
 func (m *RequestsModel) ToggleSortDir() {
-	if m.sortField != sortNone {
+	if m.sortField >= sortIndex {
 		m.sortAsc = !m.sortAsc
 		m.applySort()
 	}
@@ -206,6 +232,10 @@ func (m *RequestsModel) ToggleSortDir() {
 func (m *RequestsModel) SetFilter(filter string) {
 	m.filter = filter
 	m.rebuildFilter()
+}
+
+func (m *RequestsModel) Filter() string {
+	return m.filter
 }
 
 func (m *RequestsModel) Selected() *har.EntryDetails {
@@ -321,36 +351,60 @@ func (m RequestsModel) View() string {
 	}
 
 	urlLabel := "URL"
+	sizeLabel := "Size"
+	timeLabel := "Time"
+
+	numLabel := "#"
+	if m.sortField == sortIndex {
+		if m.sortAsc {
+			numLabel = "#▼"
+		} else {
+			numLabel = "#▲"
+		}
+	}
+	methodLabel := "Method"
+	if m.sortField == sortMethod {
+		if m.sortAsc {
+			methodLabel = "Method▼"
+		} else {
+			methodLabel = "Method▲"
+		}
+	}
 	if m.sortField == sortURL {
 		if m.sortAsc {
-			urlLabel = "URL▲"
-		} else {
 			urlLabel = "URL▼"
+		} else {
+			urlLabel = "URL▲"
 		}
 	}
-	sizeLabel := "Size"
+	statusLabel := "Status"
+	if m.sortField == sortStatus {
+		if m.sortAsc {
+			statusLabel = "Status▼"
+		} else {
+			statusLabel = "Status▲"
+		}
+	}
 	if m.sortField == sortSize {
 		if m.sortAsc {
-			sizeLabel = "Size▲"
-		} else {
 			sizeLabel = "Size▼"
+		} else {
+			sizeLabel = "Size▲"
 		}
 	}
-	timeLabel := "Time"
 	if m.sortField == sortTime {
 		if m.sortAsc {
-			timeLabel = "Time▲"
-		} else {
 			timeLabel = "Time▼"
+		} else {
+			timeLabel = "Time▲"
 		}
 	}
-
 	header := fmt.Sprintf(
 		"%-*s %-*s %-*s %-*s %-*s %-*s %s",
-		numWidth, "#",
-		methodWidth, "Method",
+		numWidth, numLabel,
+		methodWidth, methodLabel,
 		urlWidth, urlLabel,
-		statusWidth, "Status",
+		statusWidth, statusLabel,
 		sizeWidth, sizeLabel,
 		timeWidth, timeLabel,
 		"",
@@ -503,14 +557,16 @@ func (m RequestsModel) renderTypeFilterBar() string {
 		chips = append(chips, style.Render(fmt.Sprintf("%s:%d", chip.label, count)))
 	}
 
-	labelText := "Filter"
-	if m.typeFilterMode {
-		labelText = "Filter (←/→ move, space toggle, esc done)"
-	}
+	_ = m.typeFilterMode // used implicitly for rendering
 	labelStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(m.theme.GetFg()))
 	boldStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(m.theme.GetFg())).Bold(true)
-	renderedLabel := boldStyle.Render("F") + labelStyle.Render(labelText[1:])
-	return renderedLabel + "  " + strings.Join(chips, "  ")
+	renderedLabel := boldStyle.Render("F") + labelStyle.Render("ilter")
+	bar := renderedLabel + "  " + strings.Join(chips, "  ")
+	if m.filter != "" {
+		filterStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(m.theme.GetGray()))
+		bar += "  " + filterStyle.Render("Search: ") + filterStyle.Render(m.filter)
+	}
+	return bar
 }
 
 func getStatusStyle(th *theme.Engine, status int) lipgloss.Style {

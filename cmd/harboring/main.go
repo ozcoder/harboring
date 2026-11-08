@@ -12,7 +12,7 @@ import (
 	"github.com/harboring/harboring/internal/tui"
 )
 
-const version = "0.3.0"
+const version = "0.4.0"
 
 func main() {
 	args := os.Args[1:]
@@ -68,8 +68,12 @@ func main() {
 		cmdSecurity(opts)
 	case "trackers":
 		cmdTrackers(opts)
+	case "priority":
+		cmdPriority(opts)
 	case "validate":
 		cmdValidate(opts)
+	case "audit":
+		cmdAudit(opts)
 	case "fields":
 		cmdFields(opts)
 	case "diff":
@@ -79,7 +83,7 @@ func main() {
 
 // options holds the parsed command line. mode selects the operation and is one
 // of "", "view", "dump", "scrub", "shrink", "expand", "stats", "perf", "cache",
-// "security", "validate", "fields", or "diff"; an empty mode means the default viewer.
+// "security", "trackers", "priority", "validate", "fields", or "diff"; an empty mode means the default viewer.
 type options struct {
 	mode         string
 	file         string
@@ -93,6 +97,8 @@ type options struct {
 	fields       string
 	list         string
 	trackersFile string
+	audit        string
+	auditLargeKb int64
 }
 
 // parseArgs converts command line flags into options. Operations are selected
@@ -112,7 +118,23 @@ func parseArgs(args []string) (*options, error) {
 		case "-j", "--json":
 			o.jsonOut = true
 		case "--view", "--dump", "--scrub", "--shrink", "--expand",
-			"--stats", "--perf", "--cache", "--security", "--trackers", "--validate":
+			"--stats", "--perf", "--cache", "--security", "--trackers", "--priority", "--validate", "--audit":
+			if a == "--audit" {
+				if i+1 >= len(args) {
+					return nil, fmt.Errorf("--audit requires an argument (e.g. images)")
+				}
+				mode := "audit"
+				if o.mode != "" && o.mode != mode {
+					return nil, fmt.Errorf("conflicting modes: --%s and --%s", o.mode, mode)
+				}
+				o.mode = mode
+				o.audit = args[i+1]
+				if o.audit != "images" && o.audit != "redirects" {
+					return nil, fmt.Errorf("--audit: unknown type %q (expected \"images\" or \"redirects\")", o.audit)
+				}
+				i++
+				continue
+			}
 			mode := a[2:]
 			if o.mode != "" && o.mode != mode {
 				return nil, fmt.Errorf("conflicting modes: --%s and --%s", o.mode, mode)
@@ -160,6 +182,14 @@ func parseArgs(args []string) (*options, error) {
 			}
 			o.output = args[i+1]
 			i++
+		case "--audit-large", "--large-kb":
+			if i+1 >= len(args) {
+				return nil, fmt.Errorf("%s requires an argument", a)
+			}
+			var v int64
+			fmt.Sscanf(args[i+1], "%d", &v)
+			o.auditLargeKb = v
+			i++
 		default:
 			if a != "-" && strings.HasPrefix(a, "-") {
 				return nil, fmt.Errorf("unknown flag: %s", a)
@@ -187,6 +217,9 @@ func parseArgs(args []string) (*options, error) {
 	if o.mode != "diff" && o.mode != "fields" && o.file2 != "" {
 		return nil, fmt.Errorf("unexpected extra argument: %s", o.file2)
 	}
+	if o.mode == "audit" && o.auditLargeKb == 0 {
+		o.auditLargeKb = 150
+	}
 	return o, nil
 }
 
@@ -205,30 +238,34 @@ Usage:
   harboring --cache <file.har>      Show cache summary
   harboring --security <file.har>   Show security headers analysis
   harboring --trackers <file.har>   Show third-party tracker analysis
+  harboring --priority <file.har>   Show requests with changed resource priority
   harboring --validate <file.har>   Validate HAR structure
   harboring --fields <fields> <file.har>  Output HAR with only the specified fields
   harboring --list themes                 List available themes
   harboring --list trackers               List known tracker domains
+  harboring --audit images <file.har>     Audit HTML images for optimization issues
+  harboring --audit redirects <file.har>  Show redirect chains with timing information
   harboring --help                  Show this help
   harboring --version               Show version
 
 Flags:
   --view, --dump, --scrub, --shrink, --expand, --stats, --perf,
-  --cache, --security, --trackers, --validate, --fields, --diff
+  --cache, --security, --trackers, --priority, --validate, --fields, --diff, --audit
                                     Select the operation (view is the default;
                                     exactly one may be given)
   --theme <name|path>               Theme override (view mode)
   --trackers-file <path>            Load additional tracker domains from a TOML file
                                     (used with --trackers)
   --list <themes|trackers>          List built-in themes or known tracker domains
-  --markdown, -m                    Render stats/perf/cache/security/trackers as Markdown
-  --json, -j                        Render stats/perf/cache/security/trackers as JSON
-  -o <file>                         Output file (--scrub/--shrink/--expand/--stats/--perf/--cache/--security/--trackers/--fields)
+  --markdown, -m                    Render reports as Markdown
+  --json, -j                        Render reports as JSON
+  -o <file>                         Output file (--scrub/--shrink/--expand/--stats/--perf/--cache/--security/--trackers/--priority/--fields)
+  --audit-large-kb <n>              Large PNG threshold in KB for --audit images (default 150)
   --help, -h                        Show this help
   --version, -v                     Show version
 
 Non-interactive modes (--dump, --scrub, --shrink, --expand, --stats, --perf,
---cache, --security, --trackers, --validate, --fields) accept a file path,
+--cache, --security, --trackers, --priority, --validate, --fields) accept a file path,
 an explicit "-" for stdin, or piped input with no argument, and write to
 stdout unless -o is given.
 
@@ -538,6 +575,25 @@ func cmdTrackers(o *options) {
 	writeReport([]byte(report.TrackersReport(details, o.markdown)), o)
 }
 
+func cmdPriority(o *options) {
+	details, err := loadDetails(o.file)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+
+	if o.jsonOut {
+		data, err := report.PriorityJSONReport(details)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		writeReport(data, o)
+		return
+	}
+	writeReport([]byte(report.PriorityReport(details, o.markdown)), o)
+}
+
 // listThemes prints the built-in theme names.
 func listThemes() {
 	th := theme.New()
@@ -625,6 +681,50 @@ func cmdValidate(o *options) {
 	}
 
 	fmt.Printf("VALID: %d entries, all have request and response\n", len(entriesNode.Children))
+}
+
+func cmdAudit(o *options) {
+	root, err := loadRoot(o.file)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+	entries := har.GetEntries(root)
+	if len(entries) == 0 {
+		fmt.Fprintf(os.Stderr, "error: no entries found\n")
+		os.Exit(1)
+	}
+	details := make([]*har.EntryDetails, len(entries))
+	for i, e := range entries {
+		details[i] = har.GetEntryDetails(e)
+	}
+
+	if o.audit == "redirects" {
+		if o.jsonOut {
+			data, err := report.AuditRedirectsJSONReport(root, details)
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				os.Exit(1)
+			}
+			writeReport(data, o)
+			return
+		}
+		out := report.AuditRedirectsReport(root, details, o.markdown)
+		writeReport([]byte(out), o)
+		return
+	}
+
+	if o.jsonOut {
+		data, err := report.AuditImagesJSONReport(root, details, o.auditLargeKb)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "error: %v\n", err)
+			os.Exit(1)
+		}
+		writeReport(data, o)
+		return
+	}
+	out := report.AuditImagesReport(root, details, o.auditLargeKb, o.markdown)
+	writeReport([]byte(out), o)
 }
 
 // stdinIsTerminal reports whether os.Stdin is an interactive terminal (as

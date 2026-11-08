@@ -2,11 +2,12 @@ package report
 
 import (
 	"encoding/json"
+	"fmt"
 	"sort"
+	"strings"
 
 	"github.com/harboring/harboring/internal/har"
 )
-
 // --- Stats JSON ---
 
 type StatsJSON struct {
@@ -76,16 +77,16 @@ func StatsJSONReport(entries []*har.EntryDetails) ([]byte, error) {
 // --- Perf JSON ---
 
 type PerfJSON struct {
-	Requests        int              `json:"requests"`
-	TotalSize       int64            `json:"total_size"`
-	TotalSizeHuman  string           `json:"total_size_human"`
-	TotalTimeMs     float64          `json:"total_time_ms"`
-	TTFBPercentiles PercentilesJSON  `json:"ttfb_percentiles"`
-	ByResourceType  map[string]int64 `json:"by_resource_type"`
-	ByDomain        map[string]int64 `json:"by_domain"`
-	StatusCodes     map[string]int   `json:"status_codes"`
-	Largest         *PerfJSONRequest `json:"largest"`
-	Slowest         *PerfJSONRequest `json:"slowest"`
+	Requests        int               `json:"requests"`
+	TotalSize       int64             `json:"total_size"`
+	TotalSizeHuman  string            `json:"total_size_human"`
+	TotalTimeMs     float64           `json:"total_time_ms"`
+	TTFBPercentiles PercentilesJSON   `json:"ttfb_percentiles"`
+	ByResourceType  map[string]int64  `json:"by_resource_type"`
+	ByDomain        map[string]int64  `json:"by_domain"`
+	StatusCodes     map[string]int    `json:"status_codes"`
+	Largest         *PerfJSONRequest  `json:"largest"`
+	Slowest         *PerfJSONRequest  `json:"slowest"`
 	LargeFonts      []PerfJSONRequest `json:"large_fonts,omitempty"`
 }
 
@@ -295,4 +296,194 @@ func SecurityJSONReport(entries []*har.EntryDetails) ([]byte, error) {
 func TrackersJSONReport(entries []*har.EntryDetails) ([]byte, error) {
 	r := AnalyzeTrackers(entries)
 	return json.MarshalIndent(r, "", "  ")
+}
+
+// --- Priority Changes JSON ---
+
+type PriorityJSON struct {
+	Total   int                 `json:"total"`
+	Changes []PriorityJSONEntry `json:"changes"`
+}
+
+type PriorityJSONEntry struct {
+	URL             string `json:"url"`
+	Method          string `json:"method"`
+	HTTPVersion     string `json:"http_version"`
+	Status          int    `json:"status"`
+	InitialPriority string `json:"initial_priority"`
+	Priority        string `json:"priority"`
+}
+
+// --- Audit Images JSON ---
+
+type AuditImagesJSON struct {
+	Issues []AuditImageIssueJSON `json:"issues"`
+}
+
+type AuditImageIssueJSON struct {
+	Type       string `json:"type"`
+	ImageURL   string `json:"image_url"`
+	PageURL    string `json:"page_url,omitempty"`
+	SizeKB     int64  `json:"size_kb,omitempty"`
+	Details    string `json:"details"`
+	Suggestion string `json:"suggestion,omitempty"`
+}
+
+func AuditImagesJSONReport(root *har.Node, entries []*har.EntryDetails, largeKb int64) ([]byte, error) {
+	result := analyzeImages(root, entries, largeKb)
+	out := AuditImagesJSON{
+		Issues: make([]AuditImageIssueJSON, 0, len(result.Issues)),
+	}
+	for _, issue := range result.Issues {
+		out.Issues = append(out.Issues, AuditImageIssueJSON{
+			Type:       issue.Type,
+			ImageURL:   issue.ImageURL,
+			PageURL:    issue.PageURL,
+			SizeKB:     issue.SizeKB,
+			Details:    issue.Details,
+			Suggestion: issue.Suggestion,
+		})
+	}
+	return json.MarshalIndent(out, "", "  ")
+}
+
+func PriorityJSONReport(entries []*har.EntryDetails) ([]byte, error) {
+	changed := priorityChanges(entries)
+	out := PriorityJSON{
+		Total:   len(changed),
+		Changes: make([]PriorityJSONEntry, 0, len(changed)),
+	}
+	for _, e := range changed {
+		out.Changes = append(out.Changes, PriorityJSONEntry{
+			URL:             e.URL,
+			Method:          e.Method,
+			HTTPVersion:     e.HTTPVersion,
+			Status:          e.Status,
+			InitialPriority: e.InitialPriority,
+			Priority:        e.Priority,
+		})
+	}
+	return json.MarshalIndent(out, "", "  ")
+}
+
+// --- Audit Redirects JSON ---
+
+type AuditRedirectsJSON struct {
+	Chains []AuditRedirectChainJSON `json:"chains"`
+}
+
+type AuditRedirectChainJSON struct {
+	Hops []AuditRedirectHopJSON `json:"hops"`
+}
+
+type AuditRedirectHopJSON struct {
+	Index       int     `json:"index"`
+	Method      string  `json:"method"`
+	Status      int     `json:"status"`
+	URL         string  `json:"url"`
+	RedirectURL string  `json:"redirect_url"`
+	Time        float64 `json:"time_ms"`
+	Started     string  `json:"started,omitempty"`
+	Wait        float64 `json:"wait_ms"`
+	DNS         float64 `json:"dns_ms"`
+	Connect     float64 `json:"connect_ms"`
+	SSL         float64 `json:"ssl_ms"`
+	Send        float64 `json:"send_ms"`
+	Receive     float64 `json:"receive_ms"`
+	Blocked     float64 `json:"blocked_ms"`
+}
+
+func AuditRedirectsJSONReport(root *har.Node, entries []*har.EntryDetails) ([]byte, error) {
+	res := analyzeRedirects(root, entries)
+	out := AuditRedirectsJSON{
+		Chains: make([]AuditRedirectChainJSON, 0, len(res.Chains)),
+	}
+	for _, c := range res.Chains {
+		chain := AuditRedirectChainJSON{Hops: make([]AuditRedirectHopJSON, 0, len(c.Hops))}
+		for _, h := range c.Hops {
+			chain.Hops = append(chain.Hops, AuditRedirectHopJSON{
+				Index:       h.Index,
+				Method:      h.Method,
+				Status:      h.Status,
+				URL:         h.URL,
+				RedirectURL: h.RedirectURL,
+				Time:        h.Time,
+				Started:     h.Started,
+				Wait:        h.Wait,
+				DNS:         h.DNS,
+				Connect:     h.Connect,
+				SSL:         h.SSL,
+				Send:        h.Send,
+				Receive:     h.Receive,
+				Blocked:     h.Blocked,
+			})
+		}
+		out.Chains = append(out.Chains, chain)
+	}
+	return json.MarshalIndent(out, "", "  ")
+}
+
+func hasRequestHeader(d *har.EntryDetails, name string) bool {
+	lower := strings.ToLower(name)
+	for _, h := range d.RequestHeaders {
+		if strings.ToLower(h.Name) == lower {
+			return true
+		}
+	}
+	return false
+}
+
+func parseInt64(s string) int64 {
+	var v int64
+	fmt.Sscanf(s, "%d", &v)
+	return v
+}
+
+func percentile(sorted []float64, p float64) float64 {
+	if len(sorted) == 0 {
+		return 0
+	}
+	if p <= 0 {
+		return sorted[0]
+	}
+	if p >= 100 {
+		return sorted[len(sorted)-1]
+	}
+	k := (p / 100.0) * (float64(len(sorted)) - 1)
+	lo := int(k)
+	if lo < 0 {
+		lo = 0
+	}
+	hi := lo + 1
+	if hi >= len(sorted) {
+		return sorted[len(sorted)-1]
+	}
+	f := k - float64(lo)
+	return sorted[lo] + f*(sorted[hi]-sorted[lo])
+}
+
+func statusRows(statuses map[int]int) [][]string {
+	keys := make([]int, 0, len(statuses))
+	for k := range statuses {
+		keys = append(keys, k)
+	}
+	sort.Ints(keys)
+	rows := make([][]string, 0, len(keys))
+	for _, k := range keys {
+		rows = append(rows, []string{fmt.Sprintf("%d", k), fmt.Sprintf("%d", statuses[k])})
+	}
+	return rows
+}
+
+func methodRows(methods map[string]int) [][]string {
+	keys := make([]string, 0, len(methods))
+	for k := range methods {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	rows := make([][]string, 0, len(keys))
+	for _, k := range keys {
+		rows = append(rows, []string{k, fmt.Sprintf("%d", methods[k])})
+	}
+	return rows
 }

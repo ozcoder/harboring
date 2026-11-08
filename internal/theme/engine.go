@@ -10,17 +10,19 @@ import (
 )
 
 type Engine struct {
-	current   *ThemeConfig
-	dark      *ThemeConfig
-	light     *ThemeConfig
-	spectrum  *ThemeConfig
-	turbo     *ThemeConfig
-	isDark    bool
-	truecolor bool
-	order     []string
-	byName    map[string]*ThemeConfig
-	curName   string
-	cliTheme  string
+	current    *ThemeConfig
+	dark     *ThemeConfig
+	light    *ThemeConfig
+	spectrum *ThemeConfig
+	turbo    *ThemeConfig
+	goth     *ThemeConfig
+	isDark     bool
+	truecolor  bool
+	order      []string
+	byName     map[string]*ThemeConfig
+	curName    string
+	cliTheme   string
+	configFile string
 }
 
 func New() *Engine {
@@ -28,20 +30,23 @@ func New() *Engine {
 	light := DefaultLight()
 	spectrum := DefaultSpectrum()
 	turbo := DefaultTurbo()
+	goth := DefaultGoth()
 	e := &Engine{
 		dark:      dark,
 		light:     light,
 		spectrum:  spectrum,
 		turbo:     turbo,
+		goth:      goth,
 		isDark:    true,
 		truecolor: true,
-		order:     []string{"dark", "light", "spectrum", "turbo"},
+		order:     []string{"dark", "light", "spectrum", "turbo", "goth"},
 	}
 	e.byName = map[string]*ThemeConfig{
 		"dark":     dark,
 		"light":    light,
 		"spectrum": spectrum,
 		"turbo":    turbo,
+		"goth":     goth,
 	}
 	e.current = dark
 	e.curName = "dark"
@@ -76,7 +81,16 @@ func (e *Engine) CLITheme() string {
 	return e.cliTheme
 }
 
-// Set selects a built-in theme by name (e.g. "dark", "light", "spectrum").
+// ConfigFile returns the path of the auto-loaded user config theme
+// (theme.toml in the user config directory), or "" if none was loaded at
+// startup. Like CLITheme, a non-empty value marks the startup theme as
+// pinned from outside settings.toml, so the persisted settings theme does
+// not override it.
+func (e *Engine) ConfigFile() string {
+	return e.configFile
+}
+
+// Set selects a built-in theme by name (e.g. "dark", "light", "spectrum", "turbo", "goth").
 // It returns false if the name is not a known built-in theme.
 func (e *Engine) Set(name string) bool {
 	cfg, ok := e.byName[name]
@@ -120,8 +134,8 @@ func (e *Engine) SetSpectrum() {
 	e.Set("spectrum")
 }
 
-func (e *Engine) SetTurbo() {
-	e.Set("turbo")
+func (e *Engine) SetGoth() {
+	e.Set("goth")
 }
 
 func (e *Engine) IsDark() bool {
@@ -138,9 +152,12 @@ func (e *Engine) IsTruecolor() bool {
 
 // LoadStartup selects the startup theme. An explicit CLI flag wins over the
 // user config file; an empty flag falls back to the config file theme, then
-// the built-in dark default.
+// the built-in dark default. The TUI applies the persisted settings.toml
+// theme afterwards only when neither of those pinned a theme (see
+// Engine.ConfigFile).
 func (e *Engine) LoadStartup(themeFlag string) {
 	e.cliTheme = ""
+	e.configFile = ""
 	switch themeFlag {
 	case "dark":
 		e.SetDark()
@@ -155,8 +172,12 @@ func (e *Engine) LoadStartup(themeFlag string) {
 		e.cliTheme = "spectrum"
 		return
 	case "turbo":
-		e.SetTurbo()
+		e.Set("turbo")
 		e.cliTheme = "turbo"
+		return
+	case "goth":
+		e.SetGoth()
+		e.cliTheme = "goth"
 		return
 	case "":
 		// fall through to the config file theme below
@@ -178,6 +199,7 @@ func (e *Engine) LoadStartup(themeFlag string) {
 	}
 	if tc, loadErr := LoadFromFile(themePath); loadErr == nil {
 		e.SetConfig(tc)
+		e.configFile = themePath
 	}
 }
 

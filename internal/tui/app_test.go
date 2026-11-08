@@ -11,6 +11,10 @@ import (
 )
 
 func makeApp() AppModel {
+	return makeAppWithTheme(theme.New())
+}
+
+func makeAppWithTheme(th *theme.Engine) AppModel {
 	root := &har.Node{Kind: har.Object, Key: "log"}
 	entries := &har.Node{Kind: har.Array, Key: "entries"}
 	n1 := &har.Node{Kind: har.Object, Key: "0"}
@@ -19,7 +23,6 @@ func makeApp() AppModel {
 	entries.Children = []*har.Node{n1}
 	root.Children = []*har.Node{entries}
 
-	th := theme.New()
 	m := NewApp(root, "test.har", th)
 	result, _ := m.Update(tea.WindowSizeMsg{Width: 100, Height: 24})
 	return result.(AppModel)
@@ -177,6 +180,11 @@ func TestSecurityModeSwitch(t *testing.T) {
 }
 
 func TestCLIThemePrecedenceAndPersistence(t *testing.T) {
+	// Hermetic config dir: LoadStartup must not see a real theme.toml, and
+	// the t-press below persists settings, which must not touch the user's
+	// actual config.
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+
 	// A --theme flag pins the startup theme; persisted settings must not
 	// override it via applySettings.
 	th := theme.New()

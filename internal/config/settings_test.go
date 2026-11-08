@@ -94,6 +94,9 @@ func TestSaveAndLoad(t *testing.T) {
 }
 
 func TestLoadMissingFile(t *testing.T) {
+	// Hermetic: Load() must read a config dir where settings.toml is absent,
+	// not the developer's real one.
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
 	s := Load()
 	if s.Theme != "dark" {
 		t.Errorf("expected default theme 'dark', got %q", s.Theme)

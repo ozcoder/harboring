@@ -237,9 +237,22 @@ func (m AppModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		switch key {
 		case "esc", "q":
 			if opts, ok := m.popover.Content().(OptionsModel); ok {
+				prevTheme := m.settings.Theme
 				m.settings = opts.SettingsFromOptions()
+				if !opts.themeTouched {
+					// Color Theme was not adjusted: leave the active theme
+					// alone and keep whatever settings.toml held (it may be a
+					// custom theme path the panel's built-in list cannot
+					// represent).
+					m.settings.Theme = prevTheme
+				}
 				m.applySettings()
-				m.applyTheme()
+				if opts.themeTouched {
+					// An explicit Color Theme choice applies immediately,
+					// even when a --theme flag or config file pinned the
+					// startup theme.
+					m.applyTheme()
+				}
 				m.settings.Save()
 			}
 			m.popover.Close()
@@ -259,9 +272,16 @@ func (m AppModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		switch key {
 		case "esc":
 			m.searchActive = false
+			if m.mode == ModeRequests {
+				m.requests.SetFilter("")
+			}
 			return m, nil
 		case "enter":
 			m.searchActive = false
+			if m.mode == ModeRequests {
+				m.requests.SetFilter(m.search.Input.Value())
+				return m, nil
+			}
 			sel := m.search.Selected()
 			if sel != nil && sel.Node != nil {
 				m.tree.SetCursor(sel.LineIndex)
@@ -271,6 +291,10 @@ func (m AppModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		default:
 			var cmd tea.Cmd
 			m.search, cmd = m.search.Update(msg)
+			if m.mode == ModeRequests {
+				m.requests.SetFilter(m.search.Input.Value())
+				return m, cmd
+			}
 			m.search.Search(m.root, m.search.Input.Value())
 			return m, cmd
 		}
@@ -324,7 +348,11 @@ func (m AppModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 	case "/":
 		m.searchActive = true
-		m.search.Input.SetValue("")
+		if m.mode == ModeRequests {
+			m.search.Input.SetValue(m.requests.Filter())
+		} else {
+			m.search.Input.SetValue("")
+		}
 		return m, m.search.Input.Focus()
 
 	case "?":
@@ -803,9 +831,9 @@ func fitLine(s string, maxWidth int) string {
 }
 
 func (m *AppModel) applySettings() {
-	// A --theme flag on the command line always takes precedence over the
+	// A --theme flag or an auto-loaded theme.toml takes precedence over the
 	// persisted settings theme; the engine already applied it at startup.
-	if m.theme.CLITheme() == "" {
+	if m.theme.CLITheme() == "" && m.theme.ConfigFile() == "" {
 		m.applyTheme()
 	}
 	m.theme.SetTruecolor(m.settings.Truecolor)
@@ -817,8 +845,8 @@ func (m *AppModel) applySettings() {
 
 // applyTheme applies the theme selected in settings. It is separate from
 // applySettings so that an explicit in-session theme change (e.g. from the
-// options panel) can be applied immediately even when a --theme flag pinned
-// the startup theme.
+// options panel) can be applied immediately even when a --theme flag or an
+// auto-loaded theme.toml pinned the startup theme.
 func (m *AppModel) applyTheme() {
 	switch m.settings.Theme {
 	case "light":
@@ -826,7 +854,7 @@ func (m *AppModel) applyTheme() {
 	case "spectrum":
 		m.theme.SetSpectrum()
 	case "turbo":
-		m.theme.SetTurbo()
+		m.theme.Set("turbo")
 	case "dark":
 		m.theme.SetDark()
 	default:

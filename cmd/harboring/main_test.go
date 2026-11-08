@@ -883,3 +883,66 @@ func TestTrackersFileMissing(t *testing.T) {
 		t.Fatalf("expected --trackers-file error, got: %s", stderr)
 	}
 }
+
+const priorityHAR = `{"log":{"version":"1.2","creator":{"name":"t","version":"1"},"entries":[
+{"request":{"method":"GET","url":"http://a/x","httpVersion":"HTTP/2"},"response":{"status":200},"_priority":"low","_initialPriority":"high"},
+{"request":{"method":"GET","url":"http://a/y","httpVersion":"HTTP/2"},"response":{"status":200},"_priority":"medium","_initialPriority":"medium"}
+]}}`
+
+func TestPriorityStdin(t *testing.T) {
+	out, _, err := harboringStdin([]byte(priorityHAR), "--priority")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "Priority Changes") {
+		t.Fatalf("expected priority report title, got: %s", out)
+	}
+	if !strings.Contains(out, "Requests with a priority change: 1") {
+		t.Fatalf("expected count of 1, got: %s", out)
+	}
+	if !strings.Contains(out, "http://a/x") {
+		t.Fatalf("expected changed URL, got: %s", out)
+	}
+	if strings.Contains(out, "http://a/y") {
+		t.Fatalf("unchanged entry should be excluded, got: %s", out)
+	}
+}
+
+func TestPriorityMarkdown(t *testing.T) {
+	out, _, err := harboringStdin([]byte(priorityHAR), "--priority", "-m")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "# Priority Changes") {
+		t.Fatalf("expected markdown heading, got: %s", out)
+	}
+	if !strings.Contains(out, "HTTP/2") {
+		t.Fatalf("expected httpVersion in output, got: %s", out)
+	}
+}
+
+func TestPriorityJSON(t *testing.T) {
+	out, _, err := harboringStdin([]byte(priorityHAR), "--priority", "--json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !json.Valid([]byte(out)) {
+		t.Fatalf("expected valid JSON, got: %s", out)
+	}
+	if !strings.Contains(out, `"total": 1`) {
+		t.Fatalf("expected total of 1, got: %s", out)
+	}
+	if !strings.Contains(out, `"initial_priority": "high"`) {
+		t.Fatalf("expected initial_priority field, got: %s", out)
+	}
+}
+
+func TestPriorityMarkdownNoChanges(t *testing.T) {
+	out, _, err := harboringStdin([]byte(sampleHAR), "--priority", "-m")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(out, "No requests had a priority change") {
+		t.Fatalf("expected no-changes message, got: %s", out)
+	}
+}

@@ -26,7 +26,7 @@ func TestToggle(t *testing.T) {
 	start := th.GetFg()
 
 	// A full cycle through all built-in themes returns to the start.
-	names := []string{"dark", "light", "spectrum", "turbo"}
+	names := []string{"dark", "light", "spectrum", "turbo", "goth"}
 	for range names {
 		th.Toggle()
 	}
@@ -116,6 +116,45 @@ fg = "#ABCDEF"
 	}
 }
 
+func TestConfigFileTracking(t *testing.T) {
+	// With a theme.toml present, LoadStartup records it as the pinned
+	// startup source so the TUI knows not to apply the settings theme.
+	configDir := t.TempDir()
+	os.MkdirAll(filepath.Join(configDir, "harboring"), 0o755)
+	configFile := filepath.Join(configDir, "harboring", "theme.toml")
+	if err := os.WriteFile(configFile, []byte(`
+[palette]
+fg = "#ABCDEF"
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("XDG_CONFIG_HOME", configDir)
+
+	th := New()
+	th.LoadStartup("")
+	if got := th.ConfigFile(); got != configFile {
+		t.Fatalf("expected ConfigFile %q after loading theme.toml, got %q", configFile, got)
+	}
+	if got := th.CLITheme(); got != "" {
+		t.Fatalf("expected CLITheme empty when only theme.toml was loaded, got %q", got)
+	}
+
+	// An explicit flag means the config file was not used.
+	th = New()
+	th.LoadStartup("dark")
+	if got := th.ConfigFile(); got != "" {
+		t.Fatalf("expected ConfigFile empty when a --theme flag was given, got %q", got)
+	}
+
+	// No config file: nothing recorded.
+	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	th = New()
+	th.LoadStartup("")
+	if got := th.ConfigFile(); got != "" {
+		t.Fatalf("expected ConfigFile empty when theme.toml is absent, got %q", got)
+	}
+}
+
 func TestCLITheme(t *testing.T) {
 	th := New()
 	th.LoadStartup("")
@@ -123,7 +162,7 @@ func TestCLITheme(t *testing.T) {
 		t.Fatalf("expected CLITheme empty when no flag given, got %q", got)
 	}
 
-	for _, name := range []string{"dark", "light", "spectrum", "turbo"} {
+	for _, name := range []string{"dark", "light", "spectrum", "turbo", "goth"} {
 		th = New()
 		th.LoadStartup(name)
 		if got := th.CLITheme(); got != name {

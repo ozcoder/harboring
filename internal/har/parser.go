@@ -15,21 +15,22 @@ type Header struct {
 }
 
 type EntryDetails struct {
-	Method     string
-	URL        string
-	URLPath    string
-	Status     int
-	StatusText string
-	Size       int64
-	Time       float64
-	Started    string
-	DNS        float64
-	Connect    float64
-	SSL        float64
-	Send       float64
-	Wait       float64
-	Receive    float64
-	Blocked    float64
+	Method      string
+	URL         string
+	URLPath     string
+	HTTPVersion string
+	Status      int
+	StatusText  string
+	Size        int64
+	Time        float64
+	Started     string
+	DNS         float64
+	Connect     float64
+	SSL         float64
+	Send        float64
+	Wait        float64
+	Receive     float64
+	Blocked     float64
 
 	ContentEncoding    string
 	MimeType           string
@@ -218,6 +219,9 @@ func GetEntryDetails(entry *Node) *EntryDetails {
 			if parsed, err := url.Parse(d.URL); err == nil {
 				d.Domain = parsed.Hostname()
 			}
+		}
+		if h := findChild(reqNode, "httpVersion"); h != nil && h.Kind == String {
+			d.HTTPVersion = h.Value.(string)
 		}
 		if h := findChild(reqNode, "headers"); h != nil && h.Kind == Array {
 			d.RequestHeaders = parseHeaders(h)

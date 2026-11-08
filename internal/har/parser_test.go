@@ -150,7 +150,7 @@ func TestShrinkContent(t *testing.T) {
 }
 
 func TestEntryDetails(t *testing.T) {
-	data := []byte(`{"log":{"version":"1.2","entries":[{"time":30,"request":{"method":"GET","url":"http://example.com/"},"response":{"status":200,"statusText":"OK","content":{"mimeType":"text/html","size":100},"headers":[]},"cache":{},"timings":{"dns":-1,"connect":-1,"ssl":-1,"send":0,"wait":10,"receive":20}}]}}`)
+	data := []byte(`{"log":{"version":"1.2","entries":[{"time":30,"request":{"method":"GET","url":"http://example.com/","httpVersion":"HTTP/2"},"response":{"status":200,"statusText":"OK","content":{"mimeType":"text/html","size":100},"headers":[]},"cache":{},"timings":{"dns":-1,"connect":-1,"ssl":-1,"send":0,"wait":10,"receive":20},"_priority":"low","_initialPriority":"high"}]}}`)
 	root, err := ParseBytes(data)
 	if err != nil {
 		t.Fatal(err)
@@ -165,6 +165,15 @@ func TestEntryDetails(t *testing.T) {
 	}
 	if details.URL != "http://example.com/" {
 		t.Fatalf("expected http://example.com/, got %s", details.URL)
+	}
+	if details.HTTPVersion != "HTTP/2" {
+		t.Fatalf("expected HTTP/2, got %s", details.HTTPVersion)
+	}
+	if details.Priority != "low" {
+		t.Fatalf("expected low, got %s", details.Priority)
+	}
+	if details.InitialPriority != "high" {
+		t.Fatalf("expected high, got %s", details.InitialPriority)
 	}
 	if details.Status != 200 {
 		t.Fatalf("expected 200, got %d", details.Status)

@@ -51,6 +51,7 @@ harboring --perf <file.har>       Generate performance report
 harboring --cache <file.har>      Show cache summary
 harboring --security <file.har>   Show security headers analysis
 harboring --trackers <file.har>   Show third-party tracker analysis
+harboring --priority <file.har>   Show requests with changed resource priority
 harboring --fields <fields> <file.har>  Output HAR with only the specified fields
 harboring --diff <left.har> <right.har> Compare two HAR files side by side
 harboring --validate <file.har>   Validate HAR structure
@@ -94,6 +95,9 @@ harboring --security recording.har
 # Third-party tracker analysis
 harboring --trackers recording.har
 
+# Requests whose resource priority changed (_initialPriority vs _priority)
+harboring --priority recording.har
+
 # Show only certain fields as a new HAR
 harboring --fields request.url,timings.wait recording.har -o slim.har
 
@@ -113,15 +117,16 @@ harboring --version
 
 ### Markdown reports
 
-`--stats`, `--perf`, `--cache`, and `--security` print plain text by default.
-Pass `--markdown` (or `-m`) to emit a clean GitHub-flavored Markdown version
-instead — handy for pasting into issues, wikis, or PR descriptions:
+`--stats`, `--perf`, `--cache`, `--security`, `--trackers`, and `--priority`
+print plain text by default. Pass `--markdown` (or `-m`) to emit a clean
+GitHub-flavored Markdown version instead — handy for pasting into issues,
+wikis, or PR descriptions:
 
 ```bash
 harboring --perf recording.har --markdown > perf.md
 harboring --cache recording.har -m
 harboring --security recording.har --markdown | tee security.md
-```
+harboring --priority recording.har --markdown
 
 ### Flags
 
@@ -136,14 +141,17 @@ harboring --security recording.har --markdown | tee security.md
 | `--perf`                 | Generate performance report                                 |
 | `--cache`                | Show cache summary                                          |
 | `--security`             | Show security headers analysis                              |
+| `--trackers`             | Show third-party tracker analysis                           |
+| `--priority`             | Show requests whose resource priority changed (`_initialPriority` vs `_priority`) |
 | `--validate`             | Validate HAR structure                                      |
 | `--theme <name\|path>`   | Override theme (`dark`, `light`, `spectrum`, `turbo`, or path to TOML file) |
 | `--list <themes\|trackers>` | List built-in themes or known tracker domains and exit      |
 | `--trackers-file <path>` | Load additional tracker domains from a TOML file (used with `--trackers`) |
-| `--markdown`, `-m`       | Render `stats`/`perf`/`cache`/`security` reports as Markdown                |
+| `--markdown`, `-m`       | Render reports as Markdown                                  |
+| `--json`, `-j`           | Render reports as JSON                                      |
 | `--version`, `-v`        | Print the harboring version and exit                        |
 | `--help`, `-h`           | Print help and exit                                         |
-| `-o <file>`              | Output file (for `--scrub`/`--shrink`/`--expand`)           |
+| `-o <file>`              | Output file (for `--scrub`/`--shrink`/`--expand` and report modes) |
 
 At most one mode flag (`--view` … `--validate`) may be given; combine
 transformations by piping, e.g. `harboring --scrub in.har | harboring --shrink`.
@@ -166,10 +174,25 @@ domain = "ads.company.example"
 `harboring --list trackers` prints the resulting known domains grouped by
 category; `harboring --list themes` prints the available themes.
 
+### Priority changes
+
+`harboring --priority file.har` lists every request whose resource priority
+changed after it was initially queued. Chrome records the initial priority in
+`_initialPriority` and the final one in `_priority`; when the two differ the
+request made it in the report. Each row shows the URL, method, HTTP version,
+status, and the `initial → final` priority pair that changed:
+
+```bash
+harboring --priority file.har
+harboring --priority file.har --markdown
+harboring --priority file.har --json
+```
+
 ### Pipelines
 
 The non-interactive modes (`--dump`, `--scrub`, `--shrink`, `--expand`,
-`--stats`, `--perf`, `--validate`) accept input from a file path, an explicit
+`--stats`, `--perf`, `--cache`, `--security`, `--trackers`, `--priority`,
+`--validate`, `--fields`) accept input from a file path, an explicit
 `-` for stdin, or piped input with no argument. They write to stdout unless
 `-o` is given, so they compose naturally in a shell pipeline. Compressed
 streams (`.gz`/`.bz2`) are detected by their magic bytes, so you can pipe
@@ -321,7 +344,7 @@ Harboring ships with four built-in themes: **Dark**, **Light**, **Spectrum** (a 
 
 ### Custom Themes
 
-Place a TOML file at `~/.config/harboring/theme.toml` to load a custom theme on startup. See `themes/dark.toml` for the format:
+Place a TOML file at `~/.config/harboring/theme.toml` and it is loaded as the theme at startup (a `--theme` flag still overrides it for that run). You can also load a file ad-hoc with `--theme <path>`, or set `theme = "/path/to/theme.toml"` in `settings.toml`. See [docs/themes.md](docs/themes.md) for the full format, the reference of every style and palette key, and a complete annotated example (the built-in `turbo` theme). The shape of a theme file:
 
 ```toml
 [meta]
@@ -343,8 +366,6 @@ json_key = { fg = "blue" }
 # ...
 ```
 
-Palette colours can be referenced by name in styles (e.g. `fg = "green"`) or specified as hex (e.g. `fg = "#a6e3a1"`).
-
 ## Project Structure
 
 ```
@@ -353,9 +374,9 @@ internal/
   har/                   Custom HAR parser (no external HAR libraries)
   tui/                   Bubble Tea TUI
     modes/               Tree, requests, timings, summary, cache, security views
-  theme/                 Theme engine (TOML loading, dark/light/spectrum)
+  theme/                 Theme engine (built-in dark/light/spectrum/turbo, TOML loading)
   filter/                Method/status/URL filtering
-themes/                  Built-in theme TOML files
+docs/                    Theme and icon references (themes.md, ICONS.md)
 ```
 
 ## License

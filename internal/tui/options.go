@@ -22,9 +22,14 @@ type OptionsModel struct {
 	theme    *theme.Engine
 	cursor   int
 	options  []optionSetting
-	viewport viewport.Model
-	width    int
-	height   int
+	// themeTouched records whether the user adjusted the Color Theme option
+	// in this panel session. Only then does closing the panel apply (and
+	// persist) a theme change; otherwise the active theme — possibly pinned
+	// by a --theme flag or a config-file theme — is left alone.
+	themeTouched bool
+	viewport     viewport.Model
+	width        int
+	height       int
 }
 
 func NewOptionsModel(settings *config.Settings, th *theme.Engine) OptionsModel {
@@ -80,9 +85,15 @@ func (m OptionsModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if opt.current < 0 {
 			opt.current = len(opt.options) - 1
 		}
+		if opt.label == "Color Theme" {
+			m.themeTouched = true
+		}
 	case "right", "l":
 		opt := &m.options[m.cursor]
 		opt.current = (opt.current + 1) % len(opt.options)
+		if opt.label == "Color Theme" {
+			m.themeTouched = true
+		}
 	case "g":
 		m.cursor = 0
 	case "G":
