@@ -1,0 +1,57 @@
+version: 2
+
+before:
+  hooks:
+    - >-
+      sh -c 'case "$GITHUB_REPOSITORY" in
+      ""|/*|*/|*/*/*|*[[:space:][:cntrl:]]*) ;;
+      */*) test -n "$GITHUB_REPOSITORY_OWNER" &&
+      test "$GITHUB_REPOSITORY_OWNER" = "${GITHUB_REPOSITORY%%/*}" && exit 0 ;;
+      esac;
+      echo "set GITHUB_REPOSITORY=owner/repository and GITHUB_REPOSITORY_OWNER=owner before running GoReleaser" >&2; exit 1'
+
+builds:
+  - id: "harboring"
+    main: "./cmd/harboring"
+    binary: "harboring"
+    env: [CGO_ENABLED=0]
+    goos: [linux, darwin]
+    goarch: [amd64, arm64]
+    ldflags: [-s -w]
+
+archives:
+  - formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+nfpms:
+  - id: packages
+    ids: ["harboring"]
+    package_name: '{{ $name := replace (tolower .ProjectName) "_" "-" }}{{ if or (not (filter $name "^[a-z0-9]")) (lt (len $name) 2) }}pkg-{{ end }}{{ $name }}'
+    formats: [deb, rpm, apk]
+    maintainer: '{{ .Env.GITHUB_REPOSITORY_OWNER }}'
+    homepage: 'https://github.com/{{ .Env.GITHUB_REPOSITORY }}'
+    bindir: /usr/bin
+
+dockers_v2:
+  - id: "harboring"
+    ids: ["harboring"]
+    dockerfile: Dockerfile
+    images: ["ghcr.io/{{ tolower .Env.GITHUB_REPOSITORY_OWNER }}/{{ $name := replace (replace (tolower (index (split .Env.GITHUB_REPOSITORY \"/\") 1)) \"_\" \"-\") \".\" \"-\" }}{{ if not (filter $name \"^[a-z0-9]\") }}image{{ end }}{{ $name }}{{ if not (filter $name \"[a-z0-9]$\") }}image{{ end }}"]
+    tags:
+      - '{{ .Version }}'
+      - '{{ if and (not .Prerelease) (not .IsSnapshot) }}latest{{ end }}'
+    platforms: [linux/amd64, linux/arm64]
+    labels:
+      org.opencontainers.image.source: 'https://github.com/{{ .Env.GITHUB_REPOSITORY }}'
+    build_args:
+      BINARY: "harboring"
+
+checksum:
+  name_template: "{{ .ProjectName }}_{{ .Version }}_checksums.txt"
+
+changelog:
+  sort: asc
+
+release:
+  prerelease: auto
