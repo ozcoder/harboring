@@ -185,7 +185,7 @@ func (m SummaryModel) renderOverview(h, w int, titleStyle, valueStyle lipgloss.S
 	}
 	lines = append(lines, valueStyle.Render(fmt.Sprintf("  Domains:     %d", len(domains))))
 
-	box := m.buildBox("Overview", lines, w, h)
+	box := m.buildBox(lines, w, h)
 	return box
 }
 
@@ -194,7 +194,6 @@ func (m SummaryModel) renderStatusCodes(h, w int, titleStyle, valueStyle, warnSt
 
 	type bucket struct {
 		label string
-		count int
 		code  int
 	}
 	buckets := []bucket{
@@ -239,7 +238,7 @@ func (m SummaryModel) renderStatusCodes(h, w int, titleStyle, valueStyle, warnSt
 		lines = append(lines, line)
 	}
 
-	box := m.buildBox("Status Codes", lines, w, h)
+	box := m.buildBox(lines, w, h)
 	return box
 }
 
@@ -290,7 +289,7 @@ func (m SummaryModel) renderResourceTypes(h, w int, titleStyle, valueStyle lipgl
 		lines = append(lines, line)
 	}
 
-	box := m.buildBox("Resource Types", lines, w, h)
+	box := m.buildBox(lines, w, h)
 	return box
 }
 
@@ -351,11 +350,11 @@ func (m SummaryModel) renderDomains(h, w int, titleStyle, valueStyle lipgloss.St
 		lines = append(lines, line)
 	}
 
-	box := m.buildBox("Top Domains", lines, w, h)
+	box := m.buildBox(lines, w, h)
 	return box
 }
 
-func (m SummaryModel) buildBox(title string, lines []string, w, h int) string {
+func (m SummaryModel) buildBox(lines []string, w, h int) string {
 	content := strings.Join(lines, "\n")
 
 	boxStyle := lipgloss.NewStyle().
@@ -456,6 +455,6 @@ func (m SummaryModel) renderTrackers(h, w int, titleStyle, valueStyle, warnStyle
 		}
 	}
 
-	box := m.buildBox("Third-party Trackers", lines, w, h)
+	box := m.buildBox(lines, w, h)
 	return box
 }

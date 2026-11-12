@@ -83,9 +83,6 @@ func (m *TimelineModel) compute() {
 			if startMs < 0 {
 				startMs = 0
 			}
-			if startMs > cursorPos {
-				cursorPos = startMs
-			}
 		} else {
 			startMs = cursorPos
 		}
@@ -431,6 +428,7 @@ func (m TimelineModel) renderScale(windowWidth, scroll, graphWidth int) string {
 			continue
 		}
 		for j, r := range label {
+			// #nosec G115 - r is guaranteed to be within byte bounds here
 			cells[x-scroll+j] = byte(r)
 		}
 	}

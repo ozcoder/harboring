@@ -557,7 +557,7 @@ func SecurityReport(entries []*har.EntryDetails, markdown bool) string {
 	var b strings.Builder
 	b.WriteString("Security Headers Analysis\n")
 	b.WriteString("=========================\n\n")
-	b.WriteString(fmt.Sprintf("%-30s %-10s %s\n", "Domain", "Required", "Optional"))
+	fmt.Fprintf(&b, "%-30s %-10s %s\n", "Domain", "Required", "Optional")
 	b.WriteString(strings.Repeat("-", 60) + "\n")
 	for _, r := range rows {
 		fmt.Fprintf(&b, "%-30s %-10s %s\n",
@@ -573,11 +573,14 @@ func SecurityReport(entries []*har.EntryDetails, markdown bool) string {
 		fmt.Fprintf(&b, "\n  %s\n", r.domain)
 		for _, sh := range securityHeaders {
 			var status string
-			if r.present[sh.Name] {
+            switch {
+			case r.present[sh.Name]:
 				status = "Present"
-			} else if sh.Required {
+                break
+			case sh.Required:
 				status = "Missing (Required)"
-			} else {
+                break
+			default:
 				status = "Missing (Optional)"
 			}
 			fmt.Fprintf(&b, "    %-40s %s\n", sh.Name+":", status)
@@ -934,17 +937,17 @@ func AuditImagesReport(root *har.Node, entries []*har.EntryDetails, largeKb int6
 			return b.String()
 		}
 		for _, issue := range result.Issues {
-			b.WriteString(fmt.Sprintf("## Issue: %s\n\n", issue.Type))
-			b.WriteString(fmt.Sprintf("- **URL:** %s\n", issue.ImageURL))
+			fmt.Fprintf(&b, "## Issue: %s\n\n", issue.Type)
+			fmt.Fprintf(&b, "- **URL:** %s\n", issue.ImageURL)
 			if issue.PageURL != "" {
-				b.WriteString(fmt.Sprintf("- **Page:** %s\n", issue.PageURL))
+				fmt.Fprintf(&b, "- **Page:** %s\n", issue.PageURL)
 			}
 			if issue.SizeKB >= 0 {
-				b.WriteString(fmt.Sprintf("- **Size:** %d KB\n", issue.SizeKB))
+				fmt.Fprintf(&b, "- **Size:** %d KB\n", issue.SizeKB)
 			}
-			b.WriteString(fmt.Sprintf("- **Details:** %s\n\n", issue.Details))
+			fmt.Fprintf(&b, "- **Details:** %s\n\n", issue.Details)
 			if issue.Suggestion != "" {
-				b.WriteString(fmt.Sprintf("**Suggestion:** %s\n\n", issue.Suggestion))
+				fmt.Fprintf(&b, "**Suggestion:** %s\n\n", issue.Suggestion)
 			}
 		}
 		return b.String()
@@ -1155,11 +1158,9 @@ func AuditRedirectsReport(root *har.Node, entries []*har.EntryDetails, markdown 
 	for i, chain := range result.Chains {
 		fmt.Fprintf(&b, "Chain %d (%d hops)\n", i+1, len(chain.Hops))
 		for j, h := range chain.Hops {
-			prefix := "  "
+			prefix := "     "
 			if j == 0 {
 				prefix = "  -> "
-			} else {
-				prefix = "     "
 			}
 			fmt.Fprintf(&b, "%s[%d] %s %d  %s\n", prefix, h.Index, h.Method, h.Status, h.URL)
 			fmt.Fprintf(&b, "       Total %.0fms | Blocked %.0fms | DNS %.0fms | Connect %.0fms | SSL %.0fms | Send %.0fms | Wait %.0fms | Receive %.0fms\n",

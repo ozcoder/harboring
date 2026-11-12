@@ -176,12 +176,12 @@ func (m *RequestsModel) applySort() {
 			less = ai < aj
 		case sortMethod:
 			less = strings.ToLower(a.Method) < strings.ToLower(b.Method)
-			if strings.ToLower(a.Method) == strings.ToLower(b.Method) {
+			if strings.EqualFold(a.Method, b.Method) {
 				less = ai < aj
 			}
 		case sortURL:
 			less = strings.ToLower(a.URL) < strings.ToLower(b.URL)
-			if strings.ToLower(a.URL) == strings.ToLower(b.URL) {
+			if strings.EqualFold(a.URL, b.URL) {
 				less = ai < aj
 			}
 		case sortStatus:
@@ -529,12 +529,13 @@ func (m RequestsModel) renderTypeFilterBar() string {
 	}
 
 	var chips []string
+	var selected bool
 	for i, chip := range resourceTypeChips {
 		count := counts[chip.key]
 		if chip.key == "all" {
 			count = len(m.entries)
 		}
-		selected := false
+
 		if chip.key == "all" {
 			selected = len(m.typeSelected) == 0
 		} else {

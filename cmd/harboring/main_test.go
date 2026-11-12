@@ -17,8 +17,13 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
+
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
+	defer cancel()
+
 	binPath = filepath.Join(tmpDir, "harboring")
-	cmd := exec.Command("go", "build", "-o", binPath, ".")
+	cmd := exec.CommandContext(ctx, "go", "build", "-o", binPath, ".")
+
 	if out, err := cmd.CombinedOutput(); err != nil {
 		panic("build failed: " + string(out))
 	}
@@ -28,7 +33,10 @@ func TestMain(m *testing.M) {
 }
 
 func harboring(args ...string) (string, string, error) {
-	cmd := exec.Command(binPath, args...)
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, binPath, args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
@@ -36,14 +44,16 @@ func harboring(args ...string) (string, string, error) {
 	return stdout.String(), stderr.String(), err
 }
 
-func harboringStdin(stdin []byte, args ...string) (string, string, error) {
-	cmd := exec.Command(binPath, args...)
-	var stdout, stderr bytes.Buffer
+func harboringStdin(stdin []byte, args ...string) (string, error) {
+	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
+	defer cancel()
+
+	cmd := exec.CommandContext(ctx, binPath, args...)
+	var stdout
 	cmd.Stdin = bytes.NewReader(stdin)
 	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
 	err := cmd.Run()
-	return stdout.String(), stderr.String(), err
+	return stdout.String(), err
 }
 
 // harboringPipe runs two invocations with the stdout of the first piped into
@@ -97,7 +107,7 @@ func TestValidateMissingFile(t *testing.T) {
 }
 
 func TestScrubStdin(t *testing.T) {
-	out, _, err := harboringStdin([]byte(sampleHAR), "--scrub")
+	out, err := harboringStdin([]byte(sampleHAR), "--scrub")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +117,7 @@ func TestScrubStdin(t *testing.T) {
 }
 
 func TestScrubExplicitDashStdin(t *testing.T) {
-	out, _, err := harboringStdin([]byte(sampleHAR), "--scrub", "-")
+	out, err := harboringStdin([]byte(sampleHAR), "--scrub", "-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +127,7 @@ func TestScrubExplicitDashStdin(t *testing.T) {
 }
 
 func TestPerfStdin(t *testing.T) {
-	out, _, err := harboringStdin([]byte(sampleHAR), "--perf")
+	out, err := harboringStdin([]byte(sampleHAR), "--perf")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -127,7 +137,7 @@ func TestPerfStdin(t *testing.T) {
 }
 
 func TestStatsStdin(t *testing.T) {
-	out, _, err := harboringStdin([]byte(sampleHAR), "--stats")
+	out, err := harboringStdin([]byte(sampleHAR), "--stats")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -137,7 +147,7 @@ func TestStatsStdin(t *testing.T) {
 }
 
 func TestValidateStdin(t *testing.T) {
-	out, _, err := harboringStdin([]byte(sampleHAR), "--validate")
+	out, err := harboringStdin([]byte(sampleHAR), "--validate")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,7 +157,7 @@ func TestValidateStdin(t *testing.T) {
 }
 
 func TestShrinkStdin(t *testing.T) {
-	out, _, err := harboringStdin([]byte(sampleHAR), "--shrink")
+	out, err := harboringStdin([]byte(sampleHAR), "--shrink")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,7 +171,7 @@ func TestShrinkStdin(t *testing.T) {
 }
 
 func TestCacheStdin(t *testing.T) {
-	out, _, err := harboringStdin([]byte(sampleHAR), "--cache")
+	out, err := harboringStdin([]byte(sampleHAR), "--cache")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +181,7 @@ func TestCacheStdin(t *testing.T) {
 }
 
 func TestCacheMarkdown(t *testing.T) {
-	out, _, err := harboringStdin([]byte(sampleHAR), "--cache", "-m")
+	out, err := harboringStdin([]byte(sampleHAR), "--cache", "-m")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -184,7 +194,7 @@ func TestCacheMarkdown(t *testing.T) {
 }
 
 func TestSecurityStdin(t *testing.T) {
-	out, _, err := harboringStdin([]byte(sampleHAR), "--security")
+	out, err := harboringStdin([]byte(sampleHAR), "--security")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +204,7 @@ func TestSecurityStdin(t *testing.T) {
 }
 
 func TestSecurityMarkdown(t *testing.T) {
-	out, _, err := harboringStdin([]byte(sampleHAR), "--security", "--markdown")
+	out, err := harboringStdin([]byte(sampleHAR), "--security", "--markdown")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -207,7 +217,7 @@ func TestSecurityMarkdown(t *testing.T) {
 }
 
 func TestStatsMarkdown(t *testing.T) {
-	out, _, err := harboringStdin([]byte(sampleHAR), "--stats", "-m")
+	out, err := harboringStdin([]byte(sampleHAR), "--stats", "-m")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -217,7 +227,7 @@ func TestStatsMarkdown(t *testing.T) {
 }
 
 func TestPerfMarkdown(t *testing.T) {
-	out, _, err := harboringStdin([]byte(sampleHAR), "--perf", "-m")
+	out, err := harboringStdin([]byte(sampleHAR), "--perf", "-m")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -301,7 +311,7 @@ func TestExpandShrinkRoundTrip(t *testing.T) {
 
 	// shrink the expanded output via stdin simulation — write to temp file instead
 	tmpFile := filepath.Join(t.TempDir(), "expanded.har")
-	if err := os.WriteFile(tmpFile, []byte(expanded), 0644); err != nil {
+	if err := os.WriteFile(tmpFile, []byte(expanded), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -624,7 +634,7 @@ func TestJSONMarkdownConflict(t *testing.T) {
 }
 
 func TestStatsJSONStdin(t *testing.T) {
-	out, _, err := harboringStdin([]byte(sampleHAR), "--stats", "--json")
+	out, err := harboringStdin([]byte(sampleHAR), "--stats", "--json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -688,7 +698,7 @@ func TestStatsMarkdownFileOutput(t *testing.T) {
 }
 
 func TestTrackersStdin(t *testing.T) {
-	out, _, err := harboringStdin([]byte(sampleHAR), "--trackers")
+	out, err := harboringStdin([]byte(sampleHAR), "--trackers")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -890,7 +900,7 @@ const priorityHAR = `{"log":{"version":"1.2","creator":{"name":"t","version":"1"
 ]}}`
 
 func TestPriorityStdin(t *testing.T) {
-	out, _, err := harboringStdin([]byte(priorityHAR), "--priority")
+	out, err := harboringStdin([]byte(priorityHAR), "--priority")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -909,7 +919,7 @@ func TestPriorityStdin(t *testing.T) {
 }
 
 func TestPriorityMarkdown(t *testing.T) {
-	out, _, err := harboringStdin([]byte(priorityHAR), "--priority", "-m")
+	out, err := harboringStdin([]byte(priorityHAR), "--priority", "-m")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -922,7 +932,7 @@ func TestPriorityMarkdown(t *testing.T) {
 }
 
 func TestPriorityJSON(t *testing.T) {
-	out, _, err := harboringStdin([]byte(priorityHAR), "--priority", "--json")
+	out, err := harboringStdin([]byte(priorityHAR), "--priority", "--json")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -938,7 +948,7 @@ func TestPriorityJSON(t *testing.T) {
 }
 
 func TestPriorityMarkdownNoChanges(t *testing.T) {
-	out, _, err := harboringStdin([]byte(sampleHAR), "--priority", "-m")
+	out, err := harboringStdin([]byte(sampleHAR), "--priority", "-m")
 	if err != nil {
 		t.Fatal(err)
 	}

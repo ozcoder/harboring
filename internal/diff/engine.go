@@ -7,11 +7,11 @@ import (
 	"github.com/harboring/harboring/internal/har"
 )
 
-// DiffKind describes the type of difference between two nodes.
-type DiffKind int
+// Variety describes the type of difference between two nodes.
+type Variety int
 
 const (
-	Identical DiffKind = iota
+	Identical Variety = iota
 	Added
 	Removed
 	Modified
@@ -20,7 +20,7 @@ const (
 // NodeDiff represents the diff status of a single node path.
 type NodeDiff struct {
 	Path     string
-	Kind     DiffKind
+	Kind     Variety
 	Left     *har.Node
 	Right    *har.Node
 	LeftVal  string
@@ -77,15 +77,15 @@ var fieldAliases = map[string]string{
 // dateFields contains field names that hold date/time values and should be
 // ignored for diff purposes.
 var dateFields = map[string]bool{
-	"startedDateTime":       true,
-	"starteddatetime":       true,
-	"lastModified":          true,
-	"last-modified":         true,
-	"expires":               true,
-	"date":                  true,
-	"if-modified-since":     true,
-	"if-none-match":         true,
-	"if-unmodified-since":   true,
+	"startedDateTime":     true,
+	"starteddatetime":     true,
+	"lastModified":        true,
+	"last-modified":       true,
+	"expires":             true,
+	"date":                true,
+	"if-modified-since":   true,
+	"if-none-match":       true,
+	"if-unmodified-since": true,
 }
 
 // ignoredFields contains field names whose entire subtrees should be skipped
@@ -128,8 +128,8 @@ func isIgnoredField(name string) bool {
 	return ignoredFields[strings.ToLower(name)]
 }
 
-// DiffTrees compares two HAR trees and returns a list of differences.
-func DiffTrees(left, right *har.Node, opts Options) []NodeDiff {
+// CompareTrees compares two HAR trees and returns a list of differences.
+func CompareTrees(left, right *har.Node, opts Options) []NodeDiff {
 	var diffs []NodeDiff
 	diffWalk(left, right, "", &diffs, opts)
 	return diffs
@@ -221,7 +221,7 @@ func diffArrays(left, right *har.Node, path string, diffs *[]NodeDiff, opts Opti
 	if len(right.Children) > maxLen {
 		maxLen = len(right.Children)
 	}
-	for i := 0; i < maxLen; i++ {
+	for i := range maxLen {
 		childPath := joinPath(path, "") // arrays use index-based paths internally
 		var lc, rc *har.Node
 		if i < len(left.Children) {
@@ -230,11 +230,14 @@ func diffArrays(left, right *har.Node, path string, diffs *[]NodeDiff, opts Opti
 		if i < len(right.Children) {
 			rc = right.Children[i]
 		}
-		if lc == nil {
+		switch {
+		case lc == nil:
 			*diffs = append(*diffs, NodeDiff{Path: childPath, Kind: Added, Right: rc})
-		} else if rc == nil {
+			break
+		case rc == nil:
 			*diffs = append(*diffs, NodeDiff{Path: childPath, Kind: Removed, Left: lc})
-		} else {
+			break
+		default:
 			diffWalk(lc, rc, childPath, diffs, opts)
 		}
 	}

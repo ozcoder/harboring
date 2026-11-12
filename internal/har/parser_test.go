@@ -2,6 +2,7 @@ package har
 
 import (
 	"encoding/json"
+	"net/http"
 	"strings"
 	"testing"
 )
@@ -82,7 +83,7 @@ func TestExportJSONPreservesKeyOrder(t *testing.T) {
 	if zIdx < 0 || aIdx < 0 || mIdx < 0 {
 		t.Fatal("missing keys in exported JSON")
 	}
-	if !(zIdx < aIdx && aIdx < mIdx) {
+	if zIdx >= aIdx || aIdx >= mIdx {
 		t.Fatalf("key order not preserved: z_idx=%d a_idx=%d m_idx=%d", zIdx, aIdx, mIdx)
 	}
 }
@@ -160,7 +161,7 @@ func TestEntryDetails(t *testing.T) {
 		t.Fatal("expected 1 entry")
 	}
 	details := GetEntryDetails(entries[0])
-	if details.Method != "GET" {
+	if details.Method != http.MethodGet {
 		t.Fatalf("expected GET, got %s", details.Method)
 	}
 	if details.URL != "http://example.com/" {

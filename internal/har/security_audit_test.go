@@ -23,11 +23,11 @@ func TestParseDeeplyNestedDoesNotCrash(t *testing.T) {
 	// guard this recursed until the goroutine stack overflowed (panic/crash).
 	var b strings.Builder
 	const depth = 20000
-	for i := 0; i < depth; i++ {
+	for i := range depth {
 		b.WriteString(`{"a":`)
 	}
 	b.WriteString(`0`)
-	for i := 0; i < depth; i++ {
+	for i := range depth {
 		b.WriteString(`}`)
 	}
 

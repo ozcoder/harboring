@@ -73,7 +73,13 @@ func (s *Settings) BlockChar() string {
 	}
 }
 
-var ThemeOptions = []string{"dark", "light", "spectrum", "turbo"}
+var ThemeOptions = []string{
+	"dark",
+	"light",
+	"spectrum",
+	"turbo",
+	"goth",
+}
 var TruecolorOptions = []string{"on", "off"}
 var GraphSymbolOptions = []string{"block", "braille", "ascii"}
 var DefaultModeOptions = []string{"tree", "requests", "timings", "summary", "cache", "timeline"}

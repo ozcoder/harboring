@@ -187,8 +187,11 @@ func parseArgs(args []string) (*options, error) {
 				return nil, fmt.Errorf("%s requires an argument", a)
 			}
 			var v int64
-			fmt.Sscanf(args[i+1], "%d", &v)
-			o.auditLargeKb = v
+			if _, err := fmt.Sscanf(args[i+1], "%d", &v); err == nil {
+				o.auditLargeKb = v
+			} else {
+				return nil, fmt.Errorf("%s requires a numerical argument - %v", a, err)
+			}
 			i++
 		default:
 			if a != "-" && strings.HasPrefix(a, "-") {
@@ -632,6 +635,7 @@ func listTrackers() {
 // writeReport writes data to -o if set, otherwise to stdout.
 func writeReport(data []byte, o *options) {
 	if o.output != "" {
+		// #nosec G703 - Path is intentionally user-defined
 		if err := os.WriteFile(o.output, data, 0o644); err != nil {
 			fmt.Fprintf(os.Stderr, "error: %v\n", err)
 			os.Exit(1)

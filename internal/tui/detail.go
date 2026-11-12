@@ -125,7 +125,7 @@ func (m DetailModel) buildContent() string {
 	sb.WriteString(titleStyle.Render("Timings"))
 	sb.WriteString("\n\n")
 
-	timingBarWidth := 30
+	timingBarWidth := m.viewport.Width() - 18
 	sb.WriteString(m.renderTimingBar("DNS", m.entry.DNS, m.entry.Time, timingBarWidth, m.theme.GetStyle("timing_dns")))
 	sb.WriteString(m.renderTimingBar("Connect", m.entry.Connect, m.entry.Time, timingBarWidth, m.theme.GetStyle("timing_connect")))
 	sb.WriteString(m.renderTimingBar("SSL", m.entry.SSL, m.entry.Time, timingBarWidth, m.theme.GetStyle("timing_ssl")))
@@ -323,13 +323,17 @@ func (m DetailModel) buildDetailScrollbar(total, visible, offset int) []string {
 	}
 
 	for i := 0; i < scrollbarHeight; i++ {
-		if i == 0 {
+		switch {
+		case i == 0:
 			result[i] = "▲"
-		} else if i == scrollbarHeight-1 {
+			break
+		case i == scrollbarHeight-1:
 			result[i] = "▼"
-		} else if i == barPos {
+			break
+		case i == barPos:
 			result[i] = "█"
-		} else {
+			break
+		default:
 			result[i] = "│"
 		}
 	}

@@ -158,8 +158,9 @@ func (m CacheModel) Update(msg tea.Msg) (CacheModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
+	default:
+		return m, nil
 	}
-	return m, nil
 }
 
 func (m CacheModel) isScrollableSection() bool {

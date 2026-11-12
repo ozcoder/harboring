@@ -2,6 +2,7 @@ package tui
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	tea "charm.land/bubbletea/v2"
@@ -52,7 +53,6 @@ type AppModel struct {
 	searchActive bool
 	statusMsg    string
 	isDiffMode   bool
-	themeFlag    string
 }
 
 type SaveMsg struct {
@@ -253,7 +253,10 @@ func (m AppModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 					// startup theme.
 					m.applyTheme()
 				}
-				m.settings.Save()
+				if err := m.settings.Save(); err != nil {
+					fmt.Fprintf(os.Stderr, "error: %v\n", err)
+					return m, nil
+				}
 			}
 			m.popover.Close()
 			return m, nil
@@ -373,7 +376,9 @@ func (m AppModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		// Persist the newly selected theme so it is remembered next launch.
 		if name := m.theme.Name(); name != "" {
 			m.settings.Theme = name
-			m.settings.Save()
+			if err := m.settings.Save(); err != nil {
+				return m, func() tea.Msg { return fmt.Errorf("Problem saving - %v", err) }
+			}
 		}
 		return m, func() tea.Msg { return ThemeToggledMsg{} }
 
@@ -499,8 +504,7 @@ func (m AppModel) updateRequests(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 
 func (m AppModel) updateTimings(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 	key := msg.String()
-	switch key {
-	case "enter":
+	if key == "enter" {
 		entry := m.timings.Selected()
 		raw := m.timings.SelectedRaw()
 		if entry != nil {
@@ -879,10 +883,7 @@ func (m AppModel) renderSearchOverlay(baseView string) string {
 	lines := strings.Split(baseView, "\n")
 	result := make([]string, 0, len(lines)+2)
 	result = append(result, box)
-
-	for _, line := range lines {
-		result = append(result, line)
-	}
+	result = append(result, lines...)
 
 	return strings.Join(result, "\n")
 }

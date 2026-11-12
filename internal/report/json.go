@@ -435,7 +435,10 @@ func hasRequestHeader(d *har.EntryDetails, name string) bool {
 
 func parseInt64(s string) int64 {
 	var v int64
-	fmt.Sscanf(s, "%d", &v)
+	_, err := fmt.Sscanf(s, "%d", &v)
+	if err != nil {
+		return 0
+	}
 	return v
 }
 

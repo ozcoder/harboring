@@ -13,7 +13,7 @@ import (
 // writeThemeTOML creates a config dir containing theme.toml with the given
 // foreground and points XDG_CONFIG_HOME at it (hermetic: no real user
 // config is read or written by these tests).
-func writeThemeTOML(t *testing.T, fg string) string {
+func writeThemeTOML(t *testing.T, fg string) {
 	t.Helper()
 	configDir := t.TempDir()
 	t.Setenv("XDG_CONFIG_HOME", configDir)
@@ -24,7 +24,6 @@ func writeThemeTOML(t *testing.T, fg string) string {
 	if err := os.WriteFile(path, []byte("[palette]\nfg = \""+fg+"\"\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	return path
 }
 
 // openAndCloseOptions presses o, sends the given keys inside the options
@@ -109,7 +108,7 @@ func TestOptionsCloseKeepsConfigFileTheme(t *testing.T) {
 	th.LoadStartup("")
 	m := makeAppWithTheme(th)
 
-	m = openAndCloseOptions(t, m, tea.KeyPressMsg{Code: tea.KeyDown})
+	_ = openAndCloseOptions(t, m, tea.KeyPressMsg{Code: tea.KeyDown})
 	if got := th.GetFg(); got != "#ABCDEF" {
 		t.Fatalf("closing options without changing Color Theme should keep theme.toml, got fg %q", got)
 	}

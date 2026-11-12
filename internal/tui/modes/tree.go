@@ -198,7 +198,6 @@ func (m TreeModel) View() string {
 	}
 	if yOff > maxYOff {
 		yOff = maxYOff
-		m.scrollY = yOff
 	}
 
 	endLine := yOff + height

@@ -277,7 +277,10 @@ func hexTo256(hex string) string {
 		return hex
 	}
 	var r, g, b int
-	fmt.Sscanf(hex, "#%02x%02x%02x", &r, &g, &b)
+	_, err := fmt.Sscanf(hex, "#%02x%02x%02x", &r, &g, &b)
+	if err != nil {
+		return "0"
+	}
 
 	if r == 0 && g == 0 && b == 0 {
 		return "0"

@@ -45,7 +45,7 @@ func renderNodeLine(n *har.Node, th *theme.Engine, isSelected bool, width int, d
 		return buildLeafLine(indent, nodeKey, "null", nullStyle, keyStyle, unknownStyle, n.IsKnown, th, isSelected, width)
 
 	case har.Object, har.Array:
-		return buildContainerLine(n, indent, nodeKey, depth, bracketStyle, keyStyle, unknownStyle, th, isSelected, width)
+		return buildContainerLine(n, indent, nodeKey, bracketStyle, keyStyle, unknownStyle, th, isSelected, width)
 	}
 
 	return ""
@@ -111,7 +111,7 @@ func buildLeafLine(indent, key, val string, valStyle, keyStyle, unknownStyle lip
 	return line
 }
 
-func buildContainerLine(n *har.Node, indent, key string, depth int, bracketStyle, keyStyle, unknownStyle lipgloss.Style, th *theme.Engine, isSelected bool, width int) string {
+func buildContainerLine(n *har.Node, indent, key string, bracketStyle, keyStyle, unknownStyle lipgloss.Style, th *theme.Engine, isSelected bool, width int) string {
 	openBracket := "{"
 	closeBracket := "}"
 	count := len(n.Children)

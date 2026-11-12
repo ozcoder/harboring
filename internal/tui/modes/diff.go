@@ -29,7 +29,7 @@ type DiffModel struct {
 	leftNodes  []*har.Node
 	rightNodes []*har.Node
 	diffs      map[string]diff.NodeDiff
-	lineKinds  map[int]diff.DiffKind // line index -> diff kind for coloring
+	lineKinds  map[int]diff.Variety // line index -> diff kind for coloring
 
 	leftContentWidth  int // max visual width of all left lines
 	rightContentWidth int // max visual width of all right lines
@@ -73,7 +73,7 @@ func (m *DiffModel) refreshNodes() {
 	collectVisibleDiff(m.right, &m.rightNodes)
 
 	m.diffs = make(map[string]diff.NodeDiff)
-	for _, d := range diff.DiffTrees(m.left, m.right, m.options) {
+	for _, d := range diff.CompareTrees(m.left, m.right, m.options) {
 		m.diffs[d.Path] = d
 	}
 }
@@ -107,8 +107,9 @@ func (m DiffModel) Update(msg tea.Msg) (DiffModel, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyPressMsg:
 		return m.handleKey(msg)
+	default:
+		return m, nil
 	}
-	return m, nil
 }
 
 func (m DiffModel) handleKey(msg tea.KeyPressMsg) (DiffModel, tea.Cmd) {
@@ -316,7 +317,7 @@ func (m DiffModel) View() string {
 	paneW := (m.width - 1) / 2 // width available for content in each pane (total - connector) / 2
 
 	var leftLines, rightLines []string
-	var leftKinds, rightKinds []diff.DiffKind
+	var leftKinds, rightKinds []diff.Variety
 	var lineDiffList []diff.NodeDiff
 
 	leftIdx := 0
@@ -472,7 +473,7 @@ func (m DiffModel) View() string {
 	return result.String()
 }
 
-func (m DiffModel) renderSideBySide(left, right *har.Node, path string, leftLines, rightLines *[]string, leftKinds, rightKinds *[]diff.DiffKind, lineDiffs *[]diff.NodeDiff, leftIdx, rightIdx *int, width int) {
+func (m DiffModel) renderSideBySide(left, right *har.Node, path string, leftLines, rightLines *[]string, leftKinds, rightKinds *[]diff.Variety, lineDiffs *[]diff.NodeDiff, leftIdx, rightIdx *int, width int) {
 	if left == nil && right == nil {
 		return
 	}
@@ -552,7 +553,7 @@ func (m DiffModel) renderSideBySide(left, right *har.Node, path string, leftLine
 	*lineDiffs = append(*lineDiffs, diff.NodeDiff{Kind: diff.Identical})
 }
 
-func (m DiffModel) renderLeftOnly(n *har.Node, path string, lines *[]string, kinds *[]diff.DiffKind, lineDiffs *[]diff.NodeDiff, idx *int, width int) {
+func (m DiffModel) renderLeftOnly(n *har.Node, path string, lines *[]string, kinds *[]diff.Variety, lineDiffs *[]diff.NodeDiff, idx *int, width int) {
 	d := diff.NodeDiff{Kind: diff.Removed, Left: n}
 	line := m.renderNode(n, path, *idx == m.cursor, width, nil, false)
 	*lines = append(*lines, line)
@@ -576,7 +577,7 @@ func (m DiffModel) renderLeftOnly(n *har.Node, path string, lines *[]string, kin
 	*lineDiffs = append(*lineDiffs, diff.NodeDiff{Kind: diff.Removed})
 }
 
-func (m DiffModel) renderRightOnly(n *har.Node, path string, lines *[]string, kinds *[]diff.DiffKind, lineDiffs *[]diff.NodeDiff, idx *int, width int) {
+func (m DiffModel) renderRightOnly(n *har.Node, path string, lines *[]string, kinds *[]diff.Variety, lineDiffs *[]diff.NodeDiff, idx *int, width int) {
 	d := diff.NodeDiff{Kind: diff.Added, Right: n}
 	line := m.renderNode(n, path, *idx == m.cursor, width, nil, false)
 	*lines = append(*lines, line)
@@ -708,7 +709,7 @@ func (m DiffModel) renderNode(n *har.Node, path string, isSelected bool, width i
 	return line
 }
 
-func (m DiffModel) diffStyle(kind diff.DiffKind) lipgloss.Style {
+func (m DiffModel) diffStyle(kind diff.Variety) lipgloss.Style {
 	switch kind {
 	case diff.Added:
 		return m.theme.GetStyle("diff_added")
