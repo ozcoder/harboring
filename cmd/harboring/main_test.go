@@ -49,7 +49,7 @@ func harboringStdin(stdin []byte, args ...string) (string, error) {
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, binPath, args...)
-	var stdout
+	var stdout bytes.Buffer
 	cmd.Stdin = bytes.NewReader(stdin)
 	cmd.Stdout = &stdout
 	err := cmd.Run()

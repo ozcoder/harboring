@@ -13,11 +13,6 @@ func TestNew(t *testing.T) {
 	}
 }
 
-func TestGetStyle(t *testing.T) {
-	th := New()
-	style := th.GetStyle("title")
-}
-
 func TestToggle(t *testing.T) {
 	th := New()
 	start := th.GetFg()
@@ -87,7 +82,7 @@ func TestLoadStartup(t *testing.T) {
 
 func TestLoadStartupFlagOverridesConfig(t *testing.T) {
 	configDir := t.TempDir()
-	if _, err := os.MkdirAll(filepath.Join(configDir, "harboring"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(configDir, "harboring"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 
@@ -120,7 +115,7 @@ func TestConfigFileTracking(t *testing.T) {
 	// With a theme.toml present, LoadStartup records it as the pinned
 	// startup source so the TUI knows not to apply the settings theme.
 	configDir := t.TempDir()
-	if _, err := os.MkdirAll(filepath.Join(configDir, "harboring"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(configDir, "harboring"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 

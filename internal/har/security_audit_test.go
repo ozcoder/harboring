@@ -24,10 +24,10 @@ func TestParseDeeplyNestedDoesNotCrash(t *testing.T) {
 	var b strings.Builder
 	const depth = 20000
 	for i := range depth {
-		b.WriteString(`{"a":`)
+		b.WriteString(`{"a` + i + `":`)
 	}
 	b.WriteString(`0`)
-	for i := range depth {
+	for _ := range depth {
 		b.WriteString(`}`)
 	}
 
