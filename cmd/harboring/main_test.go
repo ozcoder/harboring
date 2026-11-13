@@ -15,12 +15,16 @@ import (
 var binPath string
 
 func TestMain(m *testing.M) {
+	os.Exit(TestTheMain(m))
+}
+
+func TestTheMain(m *testing.M) {
 	tmpDir, err := os.MkdirTemp("", "harboring-test-*")
 	if err != nil {
 		panic(err)
 	}
 
-	ctx, cancel := context.WithTimeout(m.Context(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
 	binPath = filepath.Join(tmpDir, "harboring")
@@ -31,11 +35,12 @@ func TestMain(m *testing.M) {
 	}
 	code := m.Run()
 	os.RemoveAll(tmpDir)
-	os.Exit(code)
+
+	return code
 }
 
 func harboring(args ...string) (string, string, error) {
-	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, binPath, args...)
@@ -47,7 +52,7 @@ func harboring(args ...string) (string, string, error) {
 }
 
 func harboringStdin(stdin []byte, args ...string) (string, error) {
-	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx, binPath, args...)
