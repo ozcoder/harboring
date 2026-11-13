@@ -2,12 +2,14 @@ package main
 
 import (
 	"bytes"
+    "context"
 	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
+    "time"
 )
 
 var binPath string
@@ -18,7 +20,7 @@ func TestMain(m *testing.M) {
 		panic(err)
 	}
 
-	ctx, cancel := context.WithTimeout(t.Context(), 20*time.Second)
+	ctx, cancel := context.WithTimeout(m.Context(), 20*time.Second)
 	defer cancel()
 
 	binPath = filepath.Join(tmpDir, "harboring")
