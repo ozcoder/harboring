@@ -153,13 +153,6 @@ func ExportJSON(root *Node) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-func flattenAll(n *Node, result *[]*Node) {
-	*result = append(*result, n)
-	for _, child := range n.Children {
-		flattenAll(child, result)
-	}
-}
-
 func GetEntries(root *Node) []*Node {
 	if root == nil || root.Kind != Object {
 		return nil

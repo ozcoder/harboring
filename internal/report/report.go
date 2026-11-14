@@ -121,7 +121,7 @@ func StatsReport(entries []*har.EntryDetails, markdown bool) string {
 		if limit > 0 {
 			b.WriteString("\n## Top 5 Slowest\n\n")
 			rows := make([][]string, 0, limit)
-			for i := 0; i < limit; i++ {
+			for i := range limit {
 				rows = append(rows, []string{
 					fmt.Sprintf("%.0f ms", slowest[i].time),
 					slowest[i].method,

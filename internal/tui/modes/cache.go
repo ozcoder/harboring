@@ -322,7 +322,7 @@ func (m CacheModel) renderCacheOverview(w, h int, titleStyle, valueStyle lipglos
 	lines = append(lines, valueStyle.Render(fmt.Sprintf("  Over-Cached:       %d", len(m.overCache))))
 	lines = append(lines, valueStyle.Render(fmt.Sprintf("  With Any Caching:  %d (%d%%)", withCache, (withCache*100)/max(1, total))))
 
-	box := m.buildBox("Overview", lines, w, h, m.active == CacheSectionOverview)
+	box := m.buildBox(lines, w, h, m.active == CacheSectionOverview)
 	return box
 }
 
@@ -335,7 +335,7 @@ func (m CacheModel) renderCacheIssues(w, h int, titleStyle, valueStyle, warnStyl
 
 	if len(issues) == 0 {
 		lines = append(lines, valueStyle.Render("  No cache issues found"))
-		box := m.buildBox("Issues", lines, w, h, m.active == CacheSectionIssues)
+		box := m.buildBox(lines, w, h, m.active == CacheSectionIssues)
 		return box
 	}
 
@@ -384,7 +384,7 @@ func (m CacheModel) renderCacheIssues(w, h int, titleStyle, valueStyle, warnStyl
 		lines = append(lines, line)
 	}
 
-	box := m.buildBox("Issues", lines, w, h, m.active == CacheSectionIssues)
+	box := m.buildBox(lines, w, h, m.active == CacheSectionIssues)
 	return box
 }
 
@@ -402,7 +402,7 @@ func (m CacheModel) renderGoodCache(w, h int, titleStyle, valueStyle, goodStyle 
 
 	if len(m.goodCache) == 0 {
 		lines = append(lines, valueStyle.Render("  No well-cached resources"))
-		box := m.buildBox("Good Cache", lines, w, h, m.active == CacheSectionGood)
+		box := m.buildBox(lines, w, h, m.active == CacheSectionGood)
 		return box
 	}
 
@@ -429,11 +429,12 @@ func (m CacheModel) renderGoodCache(w, h int, titleStyle, valueStyle, goodStyle 
 
 	for i, e := range m.goodCache[start:end] {
 		cacheInfo := ""
-		if e.MaxAge > 0 {
+		switch {
+		case e.MaxAge > 0:
 			cacheInfo = fmt.Sprintf("max-age=%ds", e.MaxAge)
-		} else if e.ETag != "" {
+		case e.ETag != "":
 			cacheInfo = "ETag"
-		} else if e.LastModified != "" {
+		case e.LastModified != "":
 			cacheInfo = "Last-Modified"
 		}
 		sc := " "
@@ -453,7 +454,7 @@ func (m CacheModel) renderGoodCache(w, h int, titleStyle, valueStyle, goodStyle 
 		lines = append(lines, line)
 	}
 
-	box := m.buildBox("Good Cache", lines, w, h, m.active == CacheSectionGood)
+	box := m.buildBox(lines, w, h, m.active == CacheSectionGood)
 	return box
 }
 
@@ -502,7 +503,7 @@ func (m CacheModel) renderCacheDetails(w, h int, titleStyle, valueStyle, warnSty
 
 	if len(m.overCache) == 0 {
 		lines = append(lines, valueStyle.Render("  No over-cached resources"))
-		box := m.buildBox("Over-Cached", lines, w, h, m.active == CacheSectionOver)
+		box := m.buildBox(lines, w, h, m.active == CacheSectionOver)
 		return box
 	}
 
@@ -545,11 +546,11 @@ func (m CacheModel) renderCacheDetails(w, h int, titleStyle, valueStyle, warnSty
 		lines = append(lines, line)
 	}
 
-	box := m.buildBox("Over-Cached", lines, w, h, m.active == CacheSectionOver)
+	box := m.buildBox(lines, w, h, m.active == CacheSectionOver)
 	return box
 }
 
-func (m CacheModel) buildBox(title string, lines []string, w, h int, active bool) string {
+func (m CacheModel) buildBox(lines []string, w, h int, active bool) string {
 	content := strings.Join(lines, "\n")
 
 	borderColor := lipgloss.Color(m.theme.GetFg())

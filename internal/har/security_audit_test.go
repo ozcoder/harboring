@@ -46,7 +46,7 @@ func TestDecompressBombRejected(t *testing.T) {
 
 	// A tiny gzip that expands to well over the (tightened) cap.
 	var raw bytes.Buffer
-	for i := 0; i < 5000; i++ {
+	for _ = range 5000 {
 		raw.WriteString("AAAAAAAAAA")
 	}
 	var gz bytes.Buffer

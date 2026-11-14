@@ -5,11 +5,12 @@ import (
 	"compress/bzip2"
 	"compress/gzip"
 	"fmt"
-	bzip2w "github.com/dsnet/compress/bzip2"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	bzip2w "github.com/dsnet/compress/bzip2"
 )
 
 // maxDecompressedBytes bounds how much a single compressed input may expand to.

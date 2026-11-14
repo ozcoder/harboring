@@ -96,16 +96,16 @@ func (m DetailModel) buildContent() string {
 	sb.WriteString(statusStyle.Render(fmt.Sprintf("%d %s", m.entry.Status, m.entry.StatusText)))
 	sb.WriteString("\n")
 
-	sb.WriteString(fmt.Sprintf("  Size:    %s\n", formatDetailSize(m.entry.Size)))
+	fmt.Fprintf(&sb, "  Size:    %s\n", formatDetailSize(m.entry.Size))
 	sb.WriteString("\n")
 
 	if m.entry.MimeType != "" {
-		sb.WriteString(fmt.Sprintf("  Type:    %s\n", m.entry.MimeType))
+		fmt.Fprintf(&sb, "  Type:    %s\n", m.entry.MimeType)
 	}
 
 	if m.entry.ShouldBeCompressed {
 		if m.entry.IsCompressed {
-			sb.WriteString(fmt.Sprintf("  Encoding: %s ✓\n", m.entry.ContentEncoding))
+			fmt.Fprintf(&sb, "  Encoding: %s ✓\n", m.entry.ContentEncoding)
 		} else {
 			warnStyle := lipgloss.NewStyle().
 				Foreground(lipgloss.Color(m.theme.GetWarn())).
@@ -323,16 +323,13 @@ func (m DetailModel) buildDetailScrollbar(total, visible, offset int) []string {
 	}
 
 	for i := 0; i < scrollbarHeight; i++ {
-		switch {
-		case i == 0:
+		switch i {
+		case 0:
 			result[i] = "▲"
-			break
-		case i == scrollbarHeight-1:
+		case scrollbarHeight-1:
 			result[i] = "▼"
-			break
-		case i == barPos:
+		case barPos:
 			result[i] = "█"
-			break
 		default:
 			result[i] = "│"
 		}

@@ -2,14 +2,14 @@ package main
 
 import (
 	"bytes"
-    "context"
+	"context"
 	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
-    "time"
+	"time"
 )
 
 var binPath string
@@ -66,8 +66,11 @@ func harboringStdin(stdin []byte, args ...string) (string, error) {
 // harboringPipe runs two invocations with the stdout of the first piped into
 // the stdin of the second, returning the second's output.
 func harboringPipe(args1, args2 []string) (string, string, error) {
-	first := exec.Command(binPath, args1...)
-	second := exec.Command(binPath, args2...)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+
+	first := exec.CommandContext(ctx, binPath, args1...)
+	second := exec.CommandContext(ctx, binPath, args2...)
 	pipe, err := first.StdoutPipe()
 	if err != nil {
 		return "", "", err

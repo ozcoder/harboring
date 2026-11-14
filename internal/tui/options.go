@@ -206,13 +206,14 @@ func (m OptionsModel) buildScrollbar(total, visible, offset int) []string {
 	}
 
 	for i := 0; i < scrollbarHeight; i++ {
-		if i == 0 {
+		switch i {
+		case 0:
 			result[i] = "▲"
-		} else if i == scrollbarHeight-1 {
+		case scrollbarHeight-1:
 			result[i] = "▼"
-		} else if i == barPos {
+		case barPos:
 			result[i] = "█"
-		} else {
+		default:
 			result[i] = "│"
 		}
 	}

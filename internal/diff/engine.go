@@ -233,10 +233,8 @@ func diffArrays(left, right *har.Node, path string, diffs *[]NodeDiff, opts Opti
 		switch {
 		case lc == nil:
 			*diffs = append(*diffs, NodeDiff{Path: childPath, Kind: Added, Right: rc})
-			break
 		case rc == nil:
 			*diffs = append(*diffs, NodeDiff{Path: childPath, Kind: Removed, Left: lc})
-			break
 		default:
 			diffWalk(lc, rc, childPath, diffs, opts)
 		}

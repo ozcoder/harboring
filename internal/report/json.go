@@ -64,7 +64,7 @@ func StatsJSONReport(entries []*har.EntryDetails) ([]byte, error) {
 		StatusCodes:    statusCodes,
 		Slowest:        make([]StatsJSONRequest, limit),
 	}
-	for i := 0; i < limit; i++ {
+	for i := range limit {
 		out.Slowest[i] = StatsJSONRequest{
 			Method: slowest[i].method,
 			URL:    slowest[i].url,

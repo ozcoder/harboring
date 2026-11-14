@@ -190,7 +190,7 @@ func parseArgs(args []string) (*options, error) {
 			if _, err := fmt.Sscanf(args[i+1], "%d", &v); err == nil {
 				o.auditLargeKb = v
 			} else {
-				return nil, fmt.Errorf("%s requires a numerical argument - %v", a, err)
+				return nil, fmt.Errorf("%s requires a numerical argument - %w", a, err)
 			}
 			i++
 		default:

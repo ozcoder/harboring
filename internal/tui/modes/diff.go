@@ -29,12 +29,12 @@ type DiffModel struct {
 	leftNodes  []*har.Node
 	rightNodes []*har.Node
 	diffs      map[string]diff.NodeDiff
-	lineKinds  map[int]diff.Variety // line index -> diff kind for coloring
+	// lineKinds  map[int]diff.Variety // line index -> diff kind for coloring
 
 	leftContentWidth  int // max visual width of all left lines
 	rightContentWidth int // max visual width of all right lines
 
-	lineDiffs []diff.NodeDiff // per-line diff info for partial string highlighting
+	// lineDiffs []diff.NodeDiff // per-line diff info for partial string highlighting
 
 	varianceInputActive bool
 	varianceInput       string

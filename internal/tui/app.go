@@ -377,7 +377,7 @@ func (m AppModel) handleKey(msg tea.KeyPressMsg) (tea.Model, tea.Cmd) {
 		if name := m.theme.Name(); name != "" {
 			m.settings.Theme = name
 			if err := m.settings.Save(); err != nil {
-				return m, func() tea.Msg { return fmt.Errorf("Problem saving - %v", err) }
+				return m, func() tea.Msg { return fmt.Errorf("Problem saving - %w", err) }
 			}
 		}
 		return m, func() tea.Msg { return ThemeToggledMsg{} }
