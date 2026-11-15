@@ -543,15 +543,16 @@ func (m RequestsModel) renderTypeFilterBar() string {
 		}
 
 		style := lipgloss.NewStyle()
-		if m.typeFilterMode && i == m.typeCursor {
+		switch {
+		case m.typeFilterMode && i == m.typeCursor:
 			style = style.
 				Background(lipgloss.Color(m.theme.GetFg())).
 				Foreground(lipgloss.Color(m.theme.GetBg()))
-		} else if selected {
+		case selected:
 			style = style.
 				Foreground(lipgloss.Color(m.theme.GetFg())).
 				Bold(true)
-		} else {
+		default:
 			style = style.Foreground(lipgloss.Color(m.theme.GetGray()))
 		}
 
@@ -614,13 +615,14 @@ func buildScrollChars(total, start, visible int) []string {
 		if i >= len(result) {
 			break
 		}
-		if i == 0 {
+		switch i {
+		case 0:
 			result[i] = "▲"
-		} else if i == scrollbarHeight-1 {
+		case scrollbarHeight-1:
 			result[i] = "▼"
-		} else if i == barPos {
+		case barPos:
 			result[i] = "█"
-		} else {
+		default:
 			result[i] = "│"
 		}
 	}

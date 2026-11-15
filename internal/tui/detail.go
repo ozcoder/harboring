@@ -115,7 +115,7 @@ func (m DetailModel) buildContent() string {
 			sb.WriteString("\n")
 		}
 	} else if m.entry.ContentEncoding != "" {
-		sb.WriteString(fmt.Sprintf("  Encoding: %s\n", m.entry.ContentEncoding))
+		fmt.Fprintf(&sb, "  Encoding: %s\n", m.entry.ContentEncoding)
 	}
 
 	sb.WriteString("\n")
@@ -134,14 +134,14 @@ func (m DetailModel) buildContent() string {
 	sb.WriteString(m.renderTimingBar("Receive", m.entry.Receive, m.entry.Time, timingBarWidth, m.theme.GetStyle("timing_receive")))
 
 	sb.WriteString("\n")
-	sb.WriteString(fmt.Sprintf("  Total:   %.1fms\n", m.entry.Time))
+	fmt.Fprintf(&sb, "  Total:   %.1fms\n", m.entry.Time)
 
 	sb.WriteString("\n")
 
 	if m.entry.Priority != "" {
 		sb.WriteString(titleStyle.Render("Priority"))
 		sb.WriteString("\n\n")
-		sb.WriteString(fmt.Sprintf("  Priority:  %s\n", m.entry.Priority))
+		fmt.Fprintf(&sb, "  Priority:  %s\n", m.entry.Priority)
 		if m.entry.InitialPriority != "" && m.entry.InitialPriority != m.entry.Priority {
 			sb.WriteString(fmt.Sprintf("  Initial:   %s\n", m.entry.InitialPriority))
 		}
@@ -322,7 +322,7 @@ func (m DetailModel) buildDetailScrollbar(total, visible, offset int) []string {
 		barPos = scrollbarHeight - 2
 	}
 
-	for i := 0; i < scrollbarHeight; i++ {
+	for i := range scrollbarHeight {
 		switch i {
 		case 0:
 			result[i] = "▲"

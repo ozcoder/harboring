@@ -88,7 +88,7 @@ func (m HelpModel) buildHelpScrollbar(total, visible, offset int) []string {
 		barPos = scrollbarHeight - 2
 	}
 
-	for i := 0; i < scrollbarHeight; i++ {
+	for i := range scrollbarHeight {
 		switch i {
 		case 0:
 			result[i] = "▲"

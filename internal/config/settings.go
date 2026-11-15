@@ -81,7 +81,7 @@ var ThemeOptions = []string{
 	"goth",
 }
 
-var TruecolorOptions = []string{"on", "off",}
+var TruecolorOptions = []string{"on", "off"}
 var GraphSymbolOptions = []string{"block", "braille", "ascii"}
 var DefaultModeOptions = []string{"tree", "requests", "timings", "summary", "cache", "timeline"}
 var CompactModeOptions = []string{"off", "on"}

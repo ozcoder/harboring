@@ -147,7 +147,7 @@ func StatsReport(entries []*har.EntryDetails, markdown bool) string {
 	}
 	if limit > 0 {
 		b.WriteString("\nTop 5 slowest:\n")
-		for i := 0; i < limit; i++ {
+		for i := range limit {
 			fmt.Fprintf(&b, "  %.0f ms  %s %s\n", slowest[i].time, slowest[i].method, slowest[i].url)
 		}
 	}
