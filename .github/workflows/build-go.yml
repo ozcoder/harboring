@@ -145,6 +145,8 @@ jobs:
     runs-on: ubuntu-slim
     permissions: {}
     steps:
+      - name: Show results
+        run: cat needs.*.result
       - name: Check results
         if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: exit 1
