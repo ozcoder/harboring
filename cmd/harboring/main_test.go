@@ -18,7 +18,7 @@ func TestMain(m *testing.M) {
 	os.Exit(TestTheMain(m))
 }
 
-func TestTheMain(m *testing.M) int {
+func TestTheMain(t *testing.T) int {
 	tmpDir, err := os.MkdirTemp("", "harboring-test-*")
 	if err != nil {
 		panic(err)

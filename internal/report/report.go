@@ -1050,59 +1050,59 @@ func analyzeRedirects(root *har.Node, entries []*har.EntryDetails) auditRedirect
 			curEntry := entriesNode.Children[curIdx]
 			resp := findChildNode(curEntry, "response")
 			req := findChildNode(curEntry, "request")
-		status := 0
-		redirectURL := ""
-		if resp != nil {
-			if sn := findChildNode(resp, "status"); sn != nil && sn.Kind == har.Number {
-				status = int(sn.Value.(float64))
-			}
-			if rn := findChildNode(resp, "redirectURL"); rn != nil && rn.Kind == har.String {
-				redirectURL = rn.Value.(string)
-			}
-		}
-		method, curURL := "", ""
-		if req != nil {
-			if m := findChildNode(req, "method"); m != nil && m.Kind == har.String {
-				method = m.Value.(string)
-			}
-			if u := findChildNode(req, "url"); u != nil && u.Kind == har.String {
-				curURL = u.Value.(string)
-			}
-		}
-		hop := redirectHop{
-			Index:       curIdx + 1,
-			Method:      method,
-			Status:      status,
-			URL:         curURL,
-			RedirectURL: redirectURL,
-		}
-		if curIdx < len(entries) && entries[curIdx] != nil {
-			d := entries[curIdx]
-			hop.Time = d.Time
-			hop.Started = d.Started
-			hop.Wait = d.Wait
-			hop.DNS = d.DNS
-			hop.Connect = d.Connect
-			hop.SSL = d.SSL
-			hop.Send = d.Send
-			hop.Receive = d.Receive
-			hop.Blocked = d.Blocked
-		}
-		chain.Hops = append(chain.Hops, hop)
-		seen[curIdx] = true
-		if status < 300 || status >= 400 || redirectURL == "" {
-			break
-		}
-		// resolve redirectURL: if relative, try joining with current URL
-		nextURL := redirectURL
-		if !strings.HasPrefix(nextURL, "http://") && !strings.HasPrefix(nextURL, "https://") {
-			if pu, err := url.Parse(curURL); err == nil {
-				if ru, err := url.Parse(nextURL); err == nil {
-					nextURL = pu.ResolveReference(ru).String()
+			status := 0
+			redirectURL := ""
+			if resp != nil {
+				if sn := findChildNode(resp, "status"); sn != nil && sn.Kind == har.Number {
+					status = int(sn.Value.(float64))
+				}
+				if rn := findChildNode(resp, "redirectURL"); rn != nil && rn.Kind == har.String {
+					redirectURL = rn.Value.(string)
 				}
 			}
-		}
-		nextIdx, ok := byURL[nextURL]
+			method, curURL := "", ""
+			if req != nil {
+				if m := findChildNode(req, "method"); m != nil && m.Kind == har.String {
+					method = m.Value.(string)
+				}
+				if u := findChildNode(req, "url"); u != nil && u.Kind == har.String {
+					curURL = u.Value.(string)
+				}
+			}
+			hop := redirectHop{
+				Index:       curIdx + 1,
+				Method:      method,
+				Status:      status,
+				URL:         curURL,
+				RedirectURL: redirectURL,
+			}
+			if curIdx < len(entries) && entries[curIdx] != nil {
+				d := entries[curIdx]
+				hop.Time = d.Time
+				hop.Started = d.Started
+				hop.Wait = d.Wait
+				hop.DNS = d.DNS
+				hop.Connect = d.Connect
+				hop.SSL = d.SSL
+				hop.Send = d.Send
+				hop.Receive = d.Receive
+				hop.Blocked = d.Blocked
+			}
+			chain.Hops = append(chain.Hops, hop)
+			seen[curIdx] = true
+			if status < 300 || status >= 400 || redirectURL == "" {
+				break
+			}
+			// resolve redirectURL: if relative, try joining with current URL
+			nextURL := redirectURL
+			if !strings.HasPrefix(nextURL, "http://") && !strings.HasPrefix(nextURL, "https://") {
+				if pu, err := url.Parse(curURL); err == nil {
+					if ru, err := url.Parse(nextURL); err == nil {
+						nextURL = pu.ResolveReference(ru).String()
+					}
+				}
+			}
+			nextIdx, ok := byURL[nextURL]
 			if !ok {
 				// try raw redirectURL
 				nextIdx, ok = byURL[redirectURL]
@@ -1195,8 +1195,9 @@ func PriorityReport(entries []*har.EntryDetails, markdown bool) string {
 		}
 		return "Requests with a priority change: 0\n\nNo requests had a priority change.\n"
 	}
+
+	var b strings.Builder
 	if markdown {
-		var b strings.Builder
 		b.WriteString("# Priority Changes\n\n")
 		headers := []string{"Method", "Version", "Status", "Initial", "Priority", "URL"}
 		rows := make([][]string, 0, len(changed))
@@ -1205,8 +1206,10 @@ func PriorityReport(entries []*har.EntryDetails, markdown bool) string {
 		}
 		b.WriteString(mdTable(headers, rows))
 		return b.String()
+	} else {
+		b.WriteString("Priority Changes\n\n")
 	}
-	var b strings.Builder
+
 	fmt.Fprintf(&b, "Requests with a priority change: %d\n\n", len(changed))
 	for _, e := range changed {
 		fmt.Fprintf(&b, "  %-6s %-8s %-3d %-10s -> %s\n", e.Method, e.HTTPVersion, e.Status, e.InitialPriority, e.Priority)

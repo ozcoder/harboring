@@ -114,7 +114,7 @@ func TestTreePageDown(t *testing.T) {
 		t.Fatalf("expected scrollY > 0 after page down, got %d", m.scrollY)
 	}
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyPgDown})
 	}
 	if m.Cursor != len(m.allNodes)-1 {
