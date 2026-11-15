@@ -147,11 +147,12 @@ jobs:
     steps:
       - name: Show files
         run: ls -R
-      - name: Show results
-        run: cat ./*.result
-      - name: Check results
+      - name: Check bad results
         if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: exit 1
+      - name: Has no bad results
+        if: !(contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled'))
+        run: exit 0
 
   snapshot:
     name: Snapshot 📦
