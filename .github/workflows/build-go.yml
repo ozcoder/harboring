@@ -146,7 +146,7 @@ jobs:
     permissions: {}
     steps:
       - name: Show results
-        run: cat *.result
+        run: cat ./*.result
       - name: Check results
         if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
         run: exit 1
