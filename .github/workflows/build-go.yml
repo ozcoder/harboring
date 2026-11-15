@@ -148,10 +148,13 @@ jobs:
       - name: Show files
         run: ls -R
       - name: Check bad results
+        if: always()
         run: |
-          if [ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') ]; then
+          if [ "${{ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') }}" == "true" ]; then
+            echo "One or more upstream jobs failed or were cancelled."
             exit 1
           else
+            echo "All upstream jobs succeeded."
             exit 0
           fi
 
