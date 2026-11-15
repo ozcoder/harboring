@@ -70,7 +70,7 @@ func TestTimelineHorizontalScrollBarGraph(t *testing.T) {
 	}
 
 	// Clamp: many rights must not exceed the timeline width.
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	}
 	if m.hScroll > m.barGraphWidthEffective()-m.timelineVisibleWidth() {
@@ -113,7 +113,7 @@ func TestTimelineScaleShowsMoreMarkersWhenWidened(t *testing.T) {
 		t.Fatalf("expected no 10ms marker at fit width, got: %q", fit)
 	}
 
-	for i := 0; i < 4; i++ {
+	for range 4 {
 		m, _ = m.Update(tea.KeyPressMsg{Text: "+"})
 	}
 	widened := header()

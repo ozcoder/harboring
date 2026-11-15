@@ -577,10 +577,8 @@ func SecurityReport(entries []*har.EntryDetails, markdown bool) string {
 			switch {
 			case r.present[sh.Name]:
 				status = "Present"
-				break
 			case sh.Required:
 				status = "Missing (Required)"
-				break
 			default:
 				status = "Missing (Optional)"
 			}
@@ -689,7 +687,6 @@ func truncate(s string, max int) string {
 	}
 	return string(r[:max-3]) + "..."
 }
-
 
 type auditImageIssue struct {
 	Type       string
@@ -1188,7 +1185,6 @@ func priorityChanges(entries []*har.EntryDetails) []*har.EntryDetails {
 	sort.Slice(changed, func(i, j int) bool { return changed[i].URL < changed[j].URL })
 	return changed
 }
-
 
 // PriorityReport builds a report of requests with changed resource priority.
 func PriorityReport(entries []*har.EntryDetails, markdown bool) string {

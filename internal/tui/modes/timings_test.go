@@ -200,7 +200,7 @@ func TestTimingsHorizontalScrollKeepsRequestsFixed(t *testing.T) {
 	}
 
 	// Clamp: pressing right many times must not exceed the bar graph width.
-	for i := 0; i < 50; i++ {
+	for range 50 {
 		m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyRight})
 	}
 	if m.hScroll > m.barGraphWidthEffective()-m.visibleBarWidth() {

@@ -485,7 +485,7 @@ func (m CacheModel) buildScrollChars(total, start, visible int) []string {
 		switch i {
 		case 0:
 			result[i] = "▲"
-		case scrollbarHeight-1:
+		case scrollbarHeight - 1:
 			result[i] = "▼"
 		case barPos:
 			result[i] = "█"
