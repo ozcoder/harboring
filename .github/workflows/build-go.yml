@@ -145,6 +145,8 @@ jobs:
     runs-on: ubuntu-slim
     permissions: {}
     steps:
+      - name: Show files
+        run: ls -R
       - name: Show results
         run: cat ./*.result
       - name: Check results
