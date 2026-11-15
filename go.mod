@@ -5,7 +5,7 @@ go 1.26.5
 require (
 	charm.land/bubbles/v2 v2.2.1
 	charm.land/bubbletea/v2 v2.1.1
-	charm.land/lipgloss/v2 v2.0.5
+	charm.land/lipgloss/v2 v2.0.6
 	github.com/BurntSushi/toml v1.6.0
 	github.com/dsnet/compress v0.0.1
 	golang.org/x/net v0.62.0
