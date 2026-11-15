@@ -25,7 +25,7 @@ func renderHScrollbar(width, total, scroll int, trackStyle, thumbStyle lipgloss.
 	thumbPos := scroll * (width - thumbLen) / maxScroll
 
 	var sb strings.Builder
-	for i := 0; i < width; i++ {
+	for i := range width {
 		if i >= thumbPos && i < thumbPos+thumbLen {
 			sb.WriteString(thumbStyle.Render("\u2588"))
 		} else {
@@ -69,7 +69,7 @@ func renderHScrollbarWithArrows(width, total, scroll int, trackStyle, thumbStyle
 	sb.WriteString(thumbStyle.Render("◀"))
 
 	// Scrollbar track
-	for i := 0; i < barWidth; i++ {
+	for i := range barWidth {
 		if i >= thumbPos && i < thumbPos+thumbLen {
 			sb.WriteString(thumbStyle.Render("\u2588"))
 		} else {

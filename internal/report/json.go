@@ -8,6 +8,7 @@ import (
 
 	"github.com/harboring/harboring/internal/har"
 )
+
 // --- Stats JSON ---
 
 type StatsJSON struct {

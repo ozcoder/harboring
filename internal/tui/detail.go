@@ -207,11 +207,11 @@ func (m DetailModel) buildContent() string {
 	}
 
 	if m.entry.LastModified != "" {
-		sb.WriteString(fmt.Sprintf("  Last-Modified: %s\n", m.entry.LastModified))
+		fmt.Fprintf(&sb, "  Last-Modified: %s\n", m.entry.LastModified)
 	}
 
 	if m.entry.Expires != "" {
-		sb.WriteString(fmt.Sprintf("  Expires:      %s\n", m.entry.Expires))
+		fmt.Fprintf(&sb, "  Expires:      %s\n", m.entry.Expires)
 	}
 
 	return sb.String()
@@ -238,7 +238,7 @@ func (m DetailModel) renderHeaders(title string, headers []har.Header) string {
 			runes := []rune(value)
 			value = string(runes[:avail])
 		}
-		sb.WriteString(fmt.Sprintf("  %-*s %s\n", nameWidth, h.Name+":", value))
+		fmt.Fprintf(&sb, "  %-*s %s\n", nameWidth, h.Name+":", value)
 	}
 	sb.WriteString("\n")
 	return sb.String()

@@ -23,11 +23,11 @@ func TestParseDeeplyNestedDoesNotCrash(t *testing.T) {
 	// guard this recursed until the goroutine stack overflowed (panic/crash).
 	var b strings.Builder
 	const depth = 20000
-	for _ = range depth {
+	for range depth {
 		b.WriteString(`{"a":`)
 	}
 	b.WriteString(`0`)
-	for _ = range depth {
+	for range depth {
 		b.WriteString(`}`)
 	}
 
@@ -46,7 +46,7 @@ func TestDecompressBombRejected(t *testing.T) {
 
 	// A tiny gzip that expands to well over the (tightened) cap.
 	var raw bytes.Buffer
-	for _ = range 5000 {
+	for range 5000 {
 		raw.WriteString("AAAAAAAAAA")
 	}
 	var gz bytes.Buffer
@@ -84,7 +84,7 @@ func TestReadFileLimitedRejectsOversized(t *testing.T) {
 	withTightLimit(t)
 
 	path := filepath.Join(t.TempDir(), "big.har")
-	if err := os.WriteFile(path, []byte(strings.Repeat("x", 5000)), 0644); err != nil {
+	if err := os.WriteFile(path, []byte(strings.Repeat("x", 5000)), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	_, err := ReadFileLimited(path)

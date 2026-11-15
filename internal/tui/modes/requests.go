@@ -611,14 +611,14 @@ func buildScrollChars(total, start, visible int) []string {
 	if barPos > scrollbarHeight-2 {
 		barPos = scrollbarHeight - 2
 	}
-	for i := 0; i < scrollbarHeight; i++ {
+	for i := range scrollbarHeight {
 		if i >= len(result) {
 			break
 		}
 		switch i {
 		case 0:
 			result[i] = "▲"
-		case scrollbarHeight-1:
+		case scrollbarHeight - 1:
 			result[i] = "▼"
 		case barPos:
 			result[i] = "█"

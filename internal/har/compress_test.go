@@ -84,7 +84,7 @@ func TestParseFileBzip2(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(t.TempDir(), "sample.har.bz2")
-	if err := os.WriteFile(path, bz, 0644); err != nil {
+	if err := os.WriteFile(path, bz, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	root, err := ParseFile(path)
@@ -102,7 +102,7 @@ func TestParseFileGzip(t *testing.T) {
 		t.Fatal(err)
 	}
 	path := filepath.Join(t.TempDir(), "sample.har.gz")
-	if err := os.WriteFile(path, gz, 0644); err != nil {
+	if err := os.WriteFile(path, gz, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	root, err := ParseFile(path)
@@ -121,7 +121,7 @@ func TestMinifyFileBzip2RoundTrip(t *testing.T) {
 	}
 	in := filepath.Join(t.TempDir(), "in.har.bz2")
 	out := filepath.Join(t.TempDir(), "out.har.bz2")
-	if err := os.WriteFile(in, bz, 0644); err != nil {
+	if err := os.WriteFile(in, bz, 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := MinifyFile(in, out); err != nil {
