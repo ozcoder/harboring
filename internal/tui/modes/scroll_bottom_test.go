@@ -41,7 +41,7 @@ func TestTimelineScrollToBottom(t *testing.T) {
 	m := NewTimelineModel(entries, nil, theme.New())
 	m.SetViewportSize(40, 6) // bodyHeight 6 -> viewH 5 visible rows
 
-	for i := 0; i < 40; i++ {
+	for range 40 {
 		m, _ = m.Update(tea.KeyPressMsg{Text: "j"})
 	}
 	if !strings.Contains(m.View(), "item19") {
@@ -55,7 +55,7 @@ func TestRequestsScrollToBottom(t *testing.T) {
 	m := NewRequestsModel(entries, nil, theme.New())
 	m.SetViewportSize(60, 9) // bodyHeight 9 -> dataHeight 6
 
-	for i := 0; i < 40; i++ {
+	for range 40 {
 		m, _ = m.Update(tea.KeyPressMsg{Text: "j"})
 	}
 	if !strings.Contains(m.View(), "item19") {
@@ -69,7 +69,7 @@ func TestTimingsScrollToBottom(t *testing.T) {
 	m := NewTimingsModel(entries, nil, theme.New())
 	m.SetViewportSize(60, 8) // bodyHeight 8
 
-	for i := 0; i < 40; i++ {
+	for range 40 {
 		m, _ = m.Update(tea.KeyPressMsg{Text: "j"})
 	}
 	if !strings.Contains(m.View(), "item19") {

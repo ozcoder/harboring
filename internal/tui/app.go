@@ -110,20 +110,20 @@ func NewDiffApp(left, right *har.Node, leftName, rightName string, th *theme.Eng
 	settings := config.Load()
 
 	m := AppModel{
-		left:      left,
-		right:     right,
-		diff:      modes.NewDiffModel(left, right, leftName, rightName, th),
-		search:    modes.NewSearchModel(th),
-		detail:    NewDetailModel(nil, nil, th),
-		help:      NewHelpModel(th),
-		options:   NewOptionsModel(settings, th),
-		popover:   NewPopover(nil),
-		keys:      keys,
-		theme:     th,
-		settings:  settings,
-		mode:      ModeDiff,
+		left:       left,
+		right:      right,
+		diff:       modes.NewDiffModel(left, right, leftName, rightName, th),
+		search:     modes.NewSearchModel(th),
+		detail:     NewDetailModel(nil, nil, th),
+		help:       NewHelpModel(th),
+		options:    NewOptionsModel(settings, th),
+		popover:    NewPopover(nil),
+		keys:       keys,
+		theme:      th,
+		settings:   settings,
+		mode:       ModeDiff,
 		isDiffMode: true,
-		fileName:  leftName,
+		fileName:   leftName,
 	}
 	m.applySettings()
 	return m

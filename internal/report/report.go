@@ -574,13 +574,13 @@ func SecurityReport(entries []*har.EntryDetails, markdown bool) string {
 		fmt.Fprintf(&b, "\n  %s\n", r.domain)
 		for _, sh := range securityHeaders {
 			var status string
-            switch {
+			switch {
 			case r.present[sh.Name]:
 				status = "Present"
-                break
+				break
 			case sh.Required:
 				status = "Missing (Required)"
-                break
+				break
 			default:
 				status = "Missing (Optional)"
 			}
