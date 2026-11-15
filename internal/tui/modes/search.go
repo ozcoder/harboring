@@ -151,7 +151,8 @@ func searchWalk(n *har.Node, path string, query string, results *[]SearchResult,
 		}
 	}
 
-	if n.Kind == har.String {
+	switch {
+	case n.Kind == har.String:
 		if n.Value != nil {
 			val := strings.ToLower(n.Value.(string))
 			if strings.Contains(val, query) {
@@ -163,9 +164,9 @@ func searchWalk(n *har.Node, path string, query string, results *[]SearchResult,
 			}
 		}
 		currentLine++
-	} else if n.Kind == har.Number || n.Kind == har.Bool || n.Kind == har.Null {
+	case n.Kind == har.Number || n.Kind == har.Bool || n.Kind == har.Null:
 		currentLine++
-	} else {
+	default:
 		if n.Collapsed {
 			currentLine++
 		} else {

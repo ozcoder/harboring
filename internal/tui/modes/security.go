@@ -330,13 +330,14 @@ func RenderSecurityDetail(result SecurityResult, th *theme.Engine, width int) st
 		isPresent := result.Present[sh.Name]
 		var status string
 		var style lipgloss.Style
-		if isPresent {
+		switch {
+		case isPresent:
 			status = "✓ Present"
 			style = presentStyle
-		} else if sh.Required {
+		case sh.Required:
 			status = "✗ Missing (Required)"
 			style = missingStyle
-		} else {
+		default:
 			status = "○ Missing (Optional)"
 			style = missingOptionalStyle
 		}

@@ -168,7 +168,7 @@ func WriteFileAuto(path string, data []byte) error {
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(path, out, 0644); err != nil {
+	if err := os.WriteFile(path, out, 0o644); err != nil {
 		return fmt.Errorf("write %s: %w", path, err)
 	}
 	return nil

@@ -143,7 +143,7 @@ func (m DetailModel) buildContent() string {
 		sb.WriteString("\n\n")
 		fmt.Fprintf(&sb, "  Priority:  %s\n", m.entry.Priority)
 		if m.entry.InitialPriority != "" && m.entry.InitialPriority != m.entry.Priority {
-			sb.WriteString(fmt.Sprintf("  Initial:   %s\n", m.entry.InitialPriority))
+			fmt.Fprintf(&sb, "  Initial:   %s\n", m.entry.InitialPriority)
 		}
 		sb.WriteString("\n")
 	}
@@ -179,7 +179,7 @@ func (m DetailModel) buildContent() string {
 	}
 
 	if m.entry.CacheControl != "" {
-		sb.WriteString(fmt.Sprintf("  Cache-Control: %s\n", m.entry.CacheControl))
+		fmt.Fprintf(&sb, "  Cache-Control: %s\n", m.entry.CacheControl)
 		if m.entry.NoStore {
 			sb.WriteString("    ⚠ no-store prevents all caching\n")
 		}
@@ -203,7 +203,7 @@ func (m DetailModel) buildContent() string {
 	}
 
 	if m.entry.ETag != "" {
-		sb.WriteString(fmt.Sprintf("  ETag:         %s\n", m.entry.ETag))
+		fmt.Fprintf(&sb, "  ETag:         %s\n", m.entry.ETag)
 	}
 
 	if m.entry.LastModified != "" {
@@ -326,7 +326,7 @@ func (m DetailModel) buildDetailScrollbar(total, visible, offset int) []string {
 		switch i {
 		case 0:
 			result[i] = "▲"
-		case scrollbarHeight-1:
+		case scrollbarHeight - 1:
 			result[i] = "▼"
 		case barPos:
 			result[i] = "█"

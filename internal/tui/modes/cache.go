@@ -478,7 +478,7 @@ func (m CacheModel) buildScrollChars(total, start, visible int) []string {
 		barPos = scrollbarHeight - 2
 	}
 
-	for i := 0; i < scrollbarHeight; i++ {
+	for i := range scrollbarHeight {
 		if i >= len(result) {
 			break
 		}

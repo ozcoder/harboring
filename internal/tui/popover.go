@@ -91,7 +91,7 @@ func (p *Popover) Render(baseView string) string {
 	// base content that falls outside the box footprint — to the right, above
 	// and below it — stays visible instead of being blanked out.
 	dimmed := make([]string, totalLines)
-	for i := 0; i < totalLines; i++ {
+	for i := range totalLines {
 		dimmed[i] = dimStyle.Render(padLine(baseLines[i], p.width))
 	}
 

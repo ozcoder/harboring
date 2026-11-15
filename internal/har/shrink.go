@@ -49,7 +49,7 @@ func ShrinkFile(inputPath, outputPath string) error {
 		return fmt.Errorf("export: %w", err)
 	}
 
-	if err := os.WriteFile(outputPath, output, 0644); err != nil {
+	if err := os.WriteFile(outputPath, output, 0o644); err != nil {
 		return fmt.Errorf("write output: %w", err)
 	}
 

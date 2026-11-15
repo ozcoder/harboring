@@ -1,5 +1,6 @@
 package theme
 
+//revive:disable-next-line:exported
 type ThemeConfig struct {
 	Meta    MetaConfig          `toml:"meta"`
 	Palette map[string]string   `toml:"palette"`
