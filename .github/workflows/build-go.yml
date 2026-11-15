@@ -148,11 +148,12 @@ jobs:
       - name: Show files
         run: ls -R
       - name: Check bad results
-        if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
-        run: exit 1
-      - name: Has no bad results
-        if: !(contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled'))
-        run: exit 0
+        run: |
+          if [ contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled') ]; then
+            exit 1
+          else
+            exit 0
+          fi
 
   snapshot:
     name: Snapshot 📦
