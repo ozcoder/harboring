@@ -11,11 +11,11 @@ import (
 
 type Engine struct {
 	current    *ThemeConfig
-	dark     *ThemeConfig
-	light    *ThemeConfig
-	spectrum *ThemeConfig
-	turbo    *ThemeConfig
-	goth     *ThemeConfig
+	dark       *ThemeConfig
+	light      *ThemeConfig
+	spectrum   *ThemeConfig
+	turbo      *ThemeConfig
+	goth       *ThemeConfig
 	isDark     bool
 	truecolor  bool
 	order      []string

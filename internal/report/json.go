@@ -336,14 +336,7 @@ func AuditImagesJSONReport(root *har.Node, entries []*har.EntryDetails, largeKb 
 		Issues: make([]AuditImageIssueJSON, 0, len(result.Issues)),
 	}
 	for _, issue := range result.Issues {
-		out.Issues = append(out.Issues, AuditImageIssueJSON{
-			Type:       issue.Type,
-			ImageURL:   issue.ImageURL,
-			PageURL:    issue.PageURL,
-			SizeKB:     issue.SizeKB,
-			Details:    issue.Details,
-			Suggestion: issue.Suggestion,
-		})
+		out.Issues = append(out.Issues, AuditImageIssueJSON(issue))
 	}
 	return json.MarshalIndent(out, "", "  ")
 }
@@ -402,22 +395,7 @@ func AuditRedirectsJSONReport(root *har.Node, entries []*har.EntryDetails) ([]by
 	for _, c := range res.Chains {
 		chain := AuditRedirectChainJSON{Hops: make([]AuditRedirectHopJSON, 0, len(c.Hops))}
 		for _, h := range c.Hops {
-			chain.Hops = append(chain.Hops, AuditRedirectHopJSON{
-				Index:       h.Index,
-				Method:      h.Method,
-				Status:      h.Status,
-				URL:         h.URL,
-				RedirectURL: h.RedirectURL,
-				Time:        h.Time,
-				Started:     h.Started,
-				Wait:        h.Wait,
-				DNS:         h.DNS,
-				Connect:     h.Connect,
-				SSL:         h.SSL,
-				Send:        h.Send,
-				Receive:     h.Receive,
-				Blocked:     h.Blocked,
-			})
+			chain.Hops = append(chain.Hops, AuditRedirectHopJSON(h))
 		}
 		out.Chains = append(out.Chains, chain)
 	}

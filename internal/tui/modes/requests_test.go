@@ -114,7 +114,7 @@ func TestRequestsTypeFilterFiltersEntries(t *testing.T) {
 	}
 
 	// Move cursor to "script" (index 3 in chips) and toggle it.
-	for i := 0; i < 3; i++ {
+	for range 3 {
 		m.MoveTypeCursor(1)
 	}
 	m.ToggleTypeAtCursor()

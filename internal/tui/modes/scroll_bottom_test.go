@@ -20,7 +20,7 @@ func tlTime(i int) string {
 
 func mkEntries(n int) []*har.EntryDetails {
 	entries := make([]*har.EntryDetails, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		entries[i] = &har.EntryDetails{
 			Method:       "GET",
 			URL:          fmt.Sprintf("item%d", i),

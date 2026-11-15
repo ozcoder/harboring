@@ -36,7 +36,7 @@ func TestCachePageDown(t *testing.T) {
 		t.Fatalf("expected selection %d after one page down, got %d", start+6, m.selection[CacheSectionGood])
 	}
 
-	for i := 0; i < 10; i++ {
+	for range 10 {
 		m, _ = m.Update(tea.KeyPressMsg{Code: tea.KeyPgDown})
 	}
 	if m.selection[CacheSectionGood] != 19 {

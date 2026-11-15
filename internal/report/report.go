@@ -9,6 +9,7 @@ import (
 	"github.com/harboring/harboring/internal/har"
 	"golang.org/x/net/html"
 )
+
 func findChildNode(n *har.Node, key string) *har.Node {
 	if n == nil {
 		return nil
