@@ -1206,10 +1206,9 @@ func PriorityReport(entries []*har.EntryDetails, markdown bool) string {
 		}
 		b.WriteString(mdTable(headers, rows))
 		return b.String()
-	} else {
-		b.WriteString("Priority Changes\n\n")
 	}
 
+	b.WriteString("Priority Changes\n\n")
 	fmt.Fprintf(&b, "Requests with a priority change: %d\n\n", len(changed))
 	for _, e := range changed {
 		fmt.Fprintf(&b, "  %-6s %-8s %-3d %-10s -> %s\n", e.Method, e.HTTPVersion, e.Status, e.InitialPriority, e.Priority)
