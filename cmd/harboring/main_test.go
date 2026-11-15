@@ -15,10 +15,10 @@ import (
 var binPath string
 
 func TestMain(m *testing.M) {
-	os.Exit(TestTheMain(m))
+	os.Exit(runMain(m))
 }
 
-func TestTheMain(t *testing.T) int {
+func runMain(m *testing.M) int {
 	tmpDir, err := os.MkdirTemp("", "harboring-test-*")
 	if err != nil {
 		panic(err)
