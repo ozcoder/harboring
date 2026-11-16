@@ -83,7 +83,7 @@ func TestLoadStartup(t *testing.T) {
 func TestLoadStartupFlagOverridesConfig(t *testing.T) {
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tempHome, ".config")) // Linux/BSD
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tempHome, ".config"))    // Linux/BSD
 	t.Setenv("AppData", filepath.Join(tempHome, "AppData", "Roaming")) // Windows
 
 	// Ask Go where the config dir actually resolves under this fake HOME. Should capture macOS too.
@@ -125,7 +125,7 @@ func TestConfigFileTracking(t *testing.T) {
 	// startup source so the TUI knows not to apply the settings theme.
 	tempHome := t.TempDir()
 	t.Setenv("HOME", tempHome)
-	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tempHome, ".config")) // Linux/BSD
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tempHome, ".config"))    // Linux/BSD
 	t.Setenv("AppData", filepath.Join(tempHome, "AppData", "Roaming")) // Windows
 
 	// Ask Go where the config dir actually resolves under this fake HOME. Should capture macOS too.
@@ -164,7 +164,11 @@ fg = "#ABCDEF"
 	}
 
 	// No config file: nothing recorded.
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	tempHome = t.TempDir()
+	t.Setenv("HOME", tempHome)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tempHome, ".config"))    // Linux/BSD
+	t.Setenv("AppData", filepath.Join(tempHome, "AppData", "Roaming")) // Windows
+
 	th = New()
 	th.LoadStartup("")
 	if got := th.ConfigFile(); got != "" {
