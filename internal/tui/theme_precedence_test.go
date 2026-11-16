@@ -15,8 +15,16 @@ import (
 // config is read or written by these tests).
 func writeThemeTOML(t *testing.T, fg string) {
 	t.Helper()
-	configDir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", configDir)
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tempHome, ".config"))    // Linux/BSD
+	t.Setenv("AppData", filepath.Join(tempHome, "AppData", "Roaming")) // Windows
+
+	// Ask Go where the config dir actually resolves under this fake HOME. Should capture macOS too.
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if err := os.MkdirAll(filepath.Join(configDir, "harboring"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +77,11 @@ func TestConfigFileThemeWinsOverSettings(t *testing.T) {
 	}
 
 	// Without a config file the persisted theme applies as before.
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tempHome, ".config"))    // Linux/BSD
+	t.Setenv("AppData", filepath.Join(tempHome, "AppData", "Roaming")) // Windows
+
 	th2 := theme.New()
 	th2.LoadStartup("")
 	m2 := makeAppWithTheme(th2)
@@ -84,7 +96,10 @@ func TestConfigFileThemeWinsOverSettings(t *testing.T) {
 // --theme-pinned theme (previously applyTheme() ran unconditionally and
 // reset it to the settings value).
 func TestOptionsCloseKeepsFlagPinnedTheme(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tempHome, ".config"))    // Linux/BSD
+	t.Setenv("AppData", filepath.Join(tempHome, "AppData", "Roaming")) // Windows
 
 	th := theme.New()
 	th.LoadStartup("turbo")
@@ -117,7 +132,10 @@ func TestOptionsCloseKeepsConfigFileTheme(t *testing.T) {
 // An explicit Color Theme change in the options panel must apply
 // immediately, even over a --theme flag.
 func TestOptionsColorThemeChangeApplies(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tempHome, ".config"))    // Linux/BSD
+	t.Setenv("AppData", filepath.Join(tempHome, "AppData", "Roaming")) // Windows
 
 	th := theme.New()
 	th.LoadStartup("turbo")
@@ -138,7 +156,10 @@ func TestOptionsColorThemeChangeApplies(t *testing.T) {
 // stored in settings.toml; closing the panel must not rewrite it to a
 // built-in name.
 func TestOptionsClosePreservesCustomThemePath(t *testing.T) {
-	t.Setenv("XDG_CONFIG_HOME", t.TempDir())
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tempHome, ".config"))    // Linux/BSD
+	t.Setenv("AppData", filepath.Join(tempHome, "AppData", "Roaming")) // Windows
 
 	customPath := "/home/you/.config/harboring/mytheme.toml"
 	m := makeApp()
