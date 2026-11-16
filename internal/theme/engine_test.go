@@ -81,20 +81,29 @@ func TestLoadStartup(t *testing.T) {
 }
 
 func TestLoadStartupFlagOverridesConfig(t *testing.T) {
-	configDir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(configDir, "harboring"), 0o755); err != nil {
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tempHome, ".config")) // Linux/BSD
+	t.Setenv("AppData", filepath.Join(tempHome, "AppData", "Roaming")) // Windows
+
+	// Ask Go where the config dir actually resolves under this fake HOME. Should capture macOS too.
+	configDir, err := os.UserConfigDir()
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	configFile := filepath.Join(configDir, "harboring", "theme.toml")
+	appConfigDir := filepath.Join(configDir, "harboring")
+	if err := os.MkdirAll(appConfigDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	configFile := filepath.Join(appConfigDir, "theme.toml")
 	if err := os.WriteFile(configFile, []byte(`
 [palette]
 fg = "#ABCDEF"
 `), 0o644); err != nil {
 		t.Fatal(err)
 	}
-
-	t.Setenv("XDG_CONFIG_HOME", configDir)
 
 	// Empty flag: the config-file theme applies.
 	th := New()
@@ -114,19 +123,29 @@ fg = "#ABCDEF"
 func TestConfigFileTracking(t *testing.T) {
 	// With a theme.toml present, LoadStartup records it as the pinned
 	// startup source so the TUI knows not to apply the settings theme.
-	configDir := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(configDir, "harboring"), 0o755); err != nil {
+	tempHome := t.TempDir()
+	t.Setenv("HOME", tempHome)
+	t.Setenv("XDG_CONFIG_HOME", filepath.Join(tempHome, ".config")) // Linux/BSD
+	t.Setenv("AppData", filepath.Join(tempHome, "AppData", "Roaming")) // Windows
+
+	// Ask Go where the config dir actually resolves under this fake HOME. Should capture macOS too.
+	configDir, err := os.UserConfigDir()
+	if err != nil {
 		t.Fatal(err)
 	}
 
-	configFile := filepath.Join(configDir, "harboring", "theme.toml")
+	appConfigDir := filepath.Join(configDir, "harboring")
+	if err := os.MkdirAll(appConfigDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	configFile := filepath.Join(appConfigDir, "theme.toml")
 	if err := os.WriteFile(configFile, []byte(`
 [palette]
 fg = "#ABCDEF"
 `), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("XDG_CONFIG_HOME", configDir)
 
 	th := New()
 	th.LoadStartup("")
