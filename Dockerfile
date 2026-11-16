@@ -1,0 +1,7 @@
+# Pin the base image for reproducible builds. Review and update the digest manually.
+FROM cgr.dev/chainguard/static@sha256:f68e3a8244c7d0f4cd56635aaff8e6a533cf6cc3850d8fb339567a5782d6a0b0
+ARG TARGETPLATFORM
+ARG BINARY
+COPY ${TARGETPLATFORM}/${BINARY} /usr/local/bin/app
+USER 65532
+ENTRYPOINT ["/usr/local/bin/app"]
